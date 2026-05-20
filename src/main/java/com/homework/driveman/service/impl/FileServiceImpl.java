@@ -86,6 +86,19 @@ public class FileServiceImpl extends ServiceImpl<FileMapper, File> implements IF
     }
 
     @Override
+    public File saveRecord(Integer userId, String filePath, String fileName, String fileType) {
+        File file = new File();
+        file.setUserId(userId);
+        file.setFileName(fileName);
+        file.setFilePath(filePath);
+        file.setFileType(fileType);
+        file.setUploadTime(LocalDateTime.now());
+        save(file);
+        log.info("文件记录保存成功: id={}, type={}, path={}", file.getId(), fileType, filePath);
+        return file;
+    }
+
+    @Override
     public String getAbsolutePath(File file) {
         return Paths.get(uploadPath, file.getFilePath()).toString();
     }

@@ -25,4 +25,14 @@ public interface IFileService extends IService<File> {
      * 获取文件的 URL 访问路径
      */
     String getUrlPath(File file);
+
+    /**
+     * 保存服务端生成文件的记录（用于PDF等自动生成的文件）
+     * @param userId    上传者 ID
+     * @param filePath  文件相对 uploadPath 的存储路径
+     * @param fileName  原始文件名（展示用）
+     * @param fileType  文件分类
+     * @return 文件实体（已持久化）
+     */
+    File saveRecord(Integer userId, String filePath, String fileName, String fileType);
 }
