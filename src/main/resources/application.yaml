@@ -25,6 +25,14 @@ spring:
       database: 0
       timeout: 3000
 
+  # 文件上传配置
+  servlet:
+    multipart:
+      # 单个文件最大 5MB（开发阶段设小一点，后续可按需调大）
+      max-file-size: 5MB
+      # 单次请求最大 20MB
+      max-request-size: 20MB
+
 # MyBatis-Plus 配置
 mybatis-plus:
   # XML 映射文件路径（使用自定义 SQL 时可放在此目录）
@@ -52,3 +60,8 @@ knife4j:
   contact:
     name: 开发团队
     email: dev@example.com
+
+# 自定义配置: 文件上传存储根目录（相对项目根路径）
+drive:
+  upload:
+    path: ./upload-files
