@@ -1,5 +1,5 @@
 server:
-  port: 9080
+  port: 9500
 
 spring:
   application:
@@ -7,7 +7,7 @@ spring:
 
   # MySQL 数据源配置
   datasource:
-    url: jdbc:mysql://localhost:3306/driving_school?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://localhost:3306/driveman?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
     username: root
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver

@@ -2,7 +2,7 @@
 -- 添加外键约束（建议在开发后期执行）
 -- ============================================
 
-USE driving_school;
+USE driveman;
 
 ALTER TABLE `coach`
     ADD CONSTRAINT `fk_coach_user`

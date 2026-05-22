@@ -1,9 +1,11 @@
 package com.homework.driveman.config;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -18,8 +20,26 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
     @Value("${drive.upload.path:./upload-files}")
     private String uploadPath;
 
+    @Autowired
+    private JwtInterceptor jwtInterceptor;
+
     public WebMvcConfiguration() {
         log.debug("创建配置对象: WebMvcConfiguration");
+    }
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(jwtInterceptor)
+                .addPathPatterns("/**")
+                .excludePathPatterns(
+                        "/login",
+                        "/doc.html",
+                        "/swagger-ui/**",
+                        "/v3/api-docs/**",
+                        "/webjars/**",
+                        "/uploads/**"
+                );
+        log.debug("注册 JWT 拦截器，排除: /login, /doc.html, /swagger-ui/**, /v3/api-docs/**, /webjars/**, /uploads/**");
     }
 
     @Override
