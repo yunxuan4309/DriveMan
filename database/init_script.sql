@@ -257,10 +257,10 @@ CREATE TABLE IF NOT EXISTS `fee_standard` (
 -- 1. 用户表 (密码均为 admin123)
 INSERT IGNORE INTO `user` (`role`, `username`, `password`, `real_name`, `id_card`, `phone`, `address`, `license_type`, `status`) VALUES
 (3, 'admin', '$2a$10$G6M7kH3lGH.FYWI3pMTwuuGwaDRHDWfbnR6530PeTL6ymSV.p29zS', '系统管理员', '11010119900307663X', '13800000000', '重庆市南岸区', NULL, 1),
-(2, '13812340001', '$2a$10$G6M7kH3lGH.FYWI3pMTwuuGwaDRHDWfbnR6530PeTL6ymSV.p29zS', '张教练', '510101199505012345', '13812340001', '重庆市南岸区', 'C1', 1),
-(2, '13812340002', '$2a$10$G6M7kH3lGH.FYWI3pMTwuuGwaDRHDWfbnR6530PeTL6ymSV.p29zS', '李教练', '510101198805026789', '13812340002', '重庆市南岸区', 'C1,C2', 1),
-(1, '15912340001', '$2a$10$G6M7kH3lGH.FYWI3pMTwuuGwaDRHDWfbnR6530PeTL6ymSV.p29zS', '王小明', '500101200001011234', '15912340001', '重庆市南岸区学府大道', 'C1', 1),
-(1, '15912340002', '$2a$10$G6M7kH3lGH.FYWI3pMTwuuGwaDRHDWfbnR6530PeTL6ymSV.p29zS', '李芳', '500101200105023456', '15912340002', '重庆市南岸区学府大道', 'C2', 1);
+(2, 'coach1', '$2a$10$G6M7kH3lGH.FYWI3pMTwuuGwaDRHDWfbnR6530PeTL6ymSV.p29zS', '张教练', '510101199505012345', '13812340001', '重庆市南岸区', 'C1', 1),
+(2, 'coach2', '$2a$10$G6M7kH3lGH.FYWI3pMTwuuGwaDRHDWfbnR6530PeTL6ymSV.p29zS', '李教练', '510101198805026789', '13812340002', '重庆市南岸区', 'C1,C2', 1),
+(1, 'student1', '$2a$10$G6M7kH3lGH.FYWI3pMTwuuGwaDRHDWfbnR6530PeTL6ymSV.p29zS', '王小明', '500101200001011234', '15912340001', '重庆市南岸区学府大道', 'C1', 1),
+(1, 'student2', '$2a$10$G6M7kH3lGH.FYWI3pMTwuuGwaDRHDWfbnR6530PeTL6ymSV.p29zS', '李芳', '500101200105023456', '15912340002', '重庆市南岸区学府大道', 'C2', 1);
 
 -- 2. 教练扩展表
 INSERT IGNORE INTO `coach` (`user_id`, `rating`, `coach_years`, `vehicle_type`) VALUES
