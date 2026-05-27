@@ -1,5 +1,6 @@
 package com.homework.driveman.service.impl;
 
+import com.homework.driveman.entity.ExamSession;
 import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
 import com.homework.driveman.service.IPdfService;
@@ -116,8 +117,9 @@ public class PdfServiceImpl implements IPdfService {
     }
 
     @Override
-    public String generateAdmissionTicket(User user) {
-        String relativePath = "admission_ticket/" + user.getUserId() + "_ticket_" + LocalDate.now() + ".pdf";
+    public String generateAdmissionTicket(User user, ExamSession session) {
+        String suffix = (session != null ? "_session_" + session.getId() : "");
+        String relativePath = "admission_ticket/" + user.getUserId() + "_ticket" + suffix + "_" + LocalDate.now() + ".pdf";
         Path targetPath = Paths.get(uploadPath, relativePath);
         try {
             Files.createDirectories(targetPath.getParent());
@@ -147,7 +149,14 @@ public class PdfServiceImpl implements IPdfService {
 
             addRow(table, "姓名", user.getRealName(), "性别", inferGender(user.getIdCard()));
             addRow(table, "身份证号", user.getIdCard(), "报考车型", user.getLicenseType());
-            addRow(table, "考试日期", "见考试场次安排", "考试地点", "见考试场次安排");
+
+            if (session != null) {
+                addRow(table, "考试日期", session.getExamDate().toString(),
+                        "考试时间", session.getStartTime() != null ? session.getStartTime().toString() : "");
+                addRow(table, "考试地点", session.getLocation(), "科目", "科目" + session.getSubject());
+            } else {
+                addRow(table, "考试日期", "见考试场次安排", "考试地点", "见考试场次安排");
+            }
 
             doc.add(table);
 

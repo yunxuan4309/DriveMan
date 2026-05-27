@@ -1,5 +1,6 @@
 package com.homework.driveman.controller;
 
+import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.Coach;
 import com.homework.driveman.entity.StudentCoach;
 import com.homework.driveman.entity.User;
@@ -51,6 +52,7 @@ public class CoachAssignmentController {
         return JsonResult.ok(recommended);
     }
 
+    @RequireRole(3)
     @Operation(summary = "手动分配教练",
             description = "管理员直接为学员绑定一个教练，同时写入 student_coach 表")
     @Transactional
@@ -75,6 +77,7 @@ public class CoachAssignmentController {
         return JsonResult.ok();
     }
 
+    @RequireRole(3)
     @Operation(summary = "查询所有绑定关系",
             description = "返回绑定记录，含学员姓名和教练姓名")
     @GetMapping
@@ -105,6 +108,7 @@ public class CoachAssignmentController {
         return JsonResult.ok(result);
     }
 
+    @RequireRole(3)
     @Operation(summary = "解绑教练")
     @PutMapping("/{id}/unbind")
     public JsonResult<Void> unbind(@PathVariable Integer id) {

@@ -1,5 +1,6 @@
 package com.homework.driveman.controller;
 
+import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.User;
 import com.homework.driveman.service.IUserService;
 import com.homework.driveman.web.JsonResult;
@@ -21,6 +22,7 @@ public class UserController {
     @Autowired
     private IUserService userService;
 
+    @RequireRole(3)
     @Operation(summary = "查询所有用户")
     @GetMapping
     public JsonResult<List<User>> list() {
@@ -28,6 +30,7 @@ public class UserController {
         return JsonResult.ok(list);
     }
 
+    @RequireRole(3)
     @Operation(summary = "根据ID查询用户")
     @GetMapping("/{id}")
     public JsonResult<User> getById(@PathVariable Integer id) {
@@ -35,6 +38,7 @@ public class UserController {
         return JsonResult.ok(user);
     }
 
+    @RequireRole(3)
     @Operation(summary = "新增用户")
     @PostMapping
     public JsonResult<Void> add(@RequestBody User user) {
@@ -42,6 +46,7 @@ public class UserController {
         return JsonResult.ok();
     }
 
+    @RequireRole(3)
     @Operation(summary = "修改用户")
     @PutMapping("/{id}")
     public JsonResult<Void> update(@PathVariable Integer id, @RequestBody User user) {
@@ -50,6 +55,7 @@ public class UserController {
         return JsonResult.ok();
     }
 
+    @RequireRole(3)
     @Operation(summary = "删除用户（逻辑删除）")
     @DeleteMapping("/{id}")
     public JsonResult<Void> delete(@PathVariable Integer id) {

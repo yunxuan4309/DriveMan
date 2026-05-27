@@ -1,5 +1,6 @@
 package com.homework.driveman.controller;
 
+import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.Appointment;
 import com.homework.driveman.service.IAppointmentService;
 import com.homework.driveman.web.JsonResult;
@@ -35,6 +36,7 @@ public class AppointmentController {
         return JsonResult.ok(appointment);
     }
 
+    @RequireRole(1)
     @Operation(summary = "新增约课")
     @PostMapping
     public JsonResult<Void> add(@RequestBody Appointment appointment) {
@@ -42,6 +44,7 @@ public class AppointmentController {
         return JsonResult.ok();
     }
 
+    @RequireRole({1, 3})
     @Operation(summary = "取消约课", description = "将约课状态置为已取消，可选填取消原因")
     @PutMapping("/{id}/cancel")
     public JsonResult<Void> cancel(@PathVariable Integer id,

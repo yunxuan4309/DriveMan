@@ -1,5 +1,6 @@
 package com.homework.driveman.controller;
 
+import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.ExamSession;
 import com.homework.driveman.service.IExamSessionService;
 import com.homework.driveman.web.JsonResult;
@@ -33,6 +34,7 @@ public class ExamSessionController {
         return JsonResult.ok(examSessionService.getById(id));
     }
 
+    @RequireRole(3)
     @Operation(summary = "发布考试场次")
     @PostMapping
     public JsonResult<Void> create(@RequestBody ExamSession examSession) {
@@ -40,6 +42,7 @@ public class ExamSessionController {
         return JsonResult.ok();
     }
 
+    @RequireRole(3)
     @Operation(summary = "修改考试场次")
     @PutMapping("/{id}")
     public JsonResult<Void> update(@PathVariable Integer id, @RequestBody ExamSession examSession) {
@@ -48,6 +51,7 @@ public class ExamSessionController {
         return JsonResult.ok();
     }
 
+    @RequireRole(3)
     @Operation(summary = "删除考试场次")
     @DeleteMapping("/{id}")
     public JsonResult<Void> delete(@PathVariable Integer id) {

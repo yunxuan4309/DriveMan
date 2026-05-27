@@ -21,6 +21,9 @@ public class ExamSession {
     /** 科目: 1-4 */
     private Integer subject;
 
+    /** 适用车型: C1/C2/B1... */
+    private String licenseType;
+
     /** 考试日期 */
     private LocalDate examDate;
 

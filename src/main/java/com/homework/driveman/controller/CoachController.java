@@ -1,5 +1,6 @@
 package com.homework.driveman.controller;
 
+import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.Coach;
 import com.homework.driveman.service.ICoachService;
 import com.homework.driveman.web.JsonResult;
@@ -35,6 +36,7 @@ public class CoachController {
         return JsonResult.ok(coach);
     }
 
+    @RequireRole(3)
     @Operation(summary = "新增教练")
     @PostMapping
     public JsonResult<Void> add(@RequestBody Coach coach) {
@@ -42,6 +44,7 @@ public class CoachController {
         return JsonResult.ok();
     }
 
+    @RequireRole(3)
     @Operation(summary = "修改教练")
     @PutMapping("/{id}")
     public JsonResult<Void> update(@PathVariable Integer id, @RequestBody Coach coach) {
@@ -50,6 +53,7 @@ public class CoachController {
         return JsonResult.ok();
     }
 
+    @RequireRole(3)
     @Operation(summary = "删除教练")
     @DeleteMapping("/{id}")
     public JsonResult<Void> delete(@PathVariable Integer id) {
