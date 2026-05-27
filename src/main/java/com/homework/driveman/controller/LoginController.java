@@ -3,6 +3,7 @@ package com.homework.driveman.controller;
 import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
 import com.homework.driveman.mapper.UserMapper;
+import com.homework.driveman.service.IUserService;
 import com.homework.driveman.utils.CurrentUser;
 import com.homework.driveman.utils.JwtUtils;
 import com.homework.driveman.web.JsonResult;
@@ -17,7 +18,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 登录控制器 — 账号密码登录，返回 JWT Token
+ * 登录控制器 — 登录 + 注册
  */
 @Tag(name = "登录认证")
 @RestController
@@ -25,6 +26,9 @@ public class LoginController {
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private IUserService userService;
 
     @Autowired
     private JwtUtils jwtUtils;
@@ -60,5 +64,12 @@ public class LoginController {
         result.put("role", user.getRole());
 
         return JsonResult.ok(result);
+    }
+
+    @Operation(summary = "学员注册", description = "公开接口，学员自助注册，注册后状态为待审核")
+    @PostMapping("/register")
+    public JsonResult<Map<String, Object>> register(@RequestBody User user) {
+        userService.register(user);
+        return JsonResult.ok(Map.of("userId", user.getUserId()));
     }
 }
