@@ -120,4 +120,42 @@ public class CoachAssignmentController {
         studentCoachMapper.updateById(sc);
         return JsonResult.ok();
     }
+
+    @Operation(summary = "查看我的教练",
+            description = "学员查询自己当前绑定的教练详细信息")
+    @GetMapping("/my-coach/{studentId}")
+    public JsonResult<Map<String, Object>> getMyCoach(@PathVariable Integer studentId) {
+        // 查询当前绑定关系
+        StudentCoach sc = studentCoachMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<StudentCoach>()
+                        .eq(StudentCoach::getStudentId, studentId)
+                        .eq(StudentCoach::getStatus, 1));
+
+        if (sc == null) {
+            return JsonResult.ok(null);
+        }
+
+        // 查询教练详细信息
+        Coach coach = coachService.getById(sc.getCoachId());
+        if (coach == null) {
+            return JsonResult.ok(null);
+        }
+
+        // 查询教练对应的用户信息
+        User coachUser = userMapper.selectById(coach.getUserId());
+
+        // 组装返回数据
+        Map<String, Object> result = new HashMap<>();
+        result.put("coachId", coach.getCoachId());
+        result.put("userId", coach.getUserId());
+        result.put("realName", coachUser != null ? coachUser.getRealName() : null);
+        result.put("phone", coachUser != null ? coachUser.getPhone() : null);
+        result.put("rating", coach.getRating());
+        result.put("coachYears", coach.getCoachYears());
+        result.put("vehicleType", coach.getVehicleType());
+        result.put("availableTime", coach.getAvailableTime());
+        result.put("bindTime", sc.getBindTime());
+
+        return JsonResult.ok(result);
+    }
 }
