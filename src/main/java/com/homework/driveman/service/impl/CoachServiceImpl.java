@@ -99,7 +99,7 @@ public class CoachServiceImpl extends ServiceImpl<CoachMapper, Coach> implements
         int totalStudents = studentIds != null ? studentIds.size() : 0;
 
         // 2. 总学时
-        BigDecimal totalHours = trainingRecordMapper.sumDurationByCoach(coachId);
+        BigDecimal totalHours = trainingRecordMapper.sumHoursByCoach(coachId);
         if (totalHours == null) totalHours = BigDecimal.ZERO;
 
         // 3. 通过率：四科全通过的学员数 / 参加过考试的学员数

@@ -11,4 +11,7 @@ public interface IUserService extends IService<User> {
 
     /** 修改密码 */
     void changePassword(Integer userId, String oldPassword, String newPassword);
+
+    /** 完善个人信息（学员更新报名资料） */
+    void updateProfile(Integer userId, User user);
 }
