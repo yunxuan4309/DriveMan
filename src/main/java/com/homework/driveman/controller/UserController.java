@@ -1,14 +1,9 @@
 package com.homework.driveman.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.User;
-import com.homework.driveman.exception.ServiceException;
 import com.homework.driveman.service.IUserService;
 import com.homework.driveman.utils.CurrentUser;
 import com.homework.driveman.web.JsonResult;
-import com.homework.driveman.web.ServiceCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,9 +12,10 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * 用户管理控制器 — 学员/教练/管理员的 CRUD、注册、密码修改
+ * 用户通用控制器 — 仅保留当前用户信息查询和密码修改
+ * 学员 CRUD 管理请移步 StudentController (/students)
  */
-@Tag(name = "用户管理")
+@Tag(name = "用户通用")
 @RestController
 @RequestMapping("/users")
 public class UserController {
@@ -27,29 +23,8 @@ public class UserController {
     @Autowired
     private IUserService userService;
 
-    @RequireRole(3)
-    @Operation(summary = "分页查询用户",
-            description = "支持按角色筛选，page 从 1 开始")
-    @GetMapping
-    public JsonResult<Page<User>> list(@RequestParam(defaultValue = "1") int page,
-                                       @RequestParam(defaultValue = "10") int size,
-                                       @RequestParam(required = false) Integer role) {
-        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<User>()
-                .eq(role != null, User::getRole, role)
-                .orderByDesc(User::getCreateTime);
-        Page<User> result = userService.page(new Page<>(page, size), wrapper);
-        return JsonResult.ok(result);
-    }
-
-    @RequireRole(3)
-    @Operation(summary = "根据ID查询用户")
-    @GetMapping("/{id}")
-    public JsonResult<User> getById(@PathVariable Integer id) {
-        User user = userService.getById(id);
-        return JsonResult.ok(user);
-    }
-
-    @Operation(summary = "获取当前登录用户信息")
+    @Operation(summary = "获取当前登录用户信息",
+            description = "从 Token 解析当前用户，适用于所有角色")
     @GetMapping("/me")
     public JsonResult<User> getCurrentUser(HttpServletRequest request) {
         CurrentUser currentUser = (CurrentUser) request.getAttribute("currentUser");
@@ -57,37 +32,8 @@ public class UserController {
         return JsonResult.ok(user);
     }
 
-    @RequireRole(3)
-    @Operation(summary = "新增用户（密码自动加密）")
-    @PostMapping
-    public JsonResult<Void> add(@RequestBody User user) {
-        userService.register(user);
-        return JsonResult.ok();
-    }
-
-    @RequireRole(3)
-    @Operation(summary = "修改用户")
-    @PutMapping("/{id}")
-    public JsonResult<Void> update(@PathVariable Integer id, @RequestBody User user) {
-        user.setUserId(id);
-        // 密码为空时不覆盖
-        if (user.getPassword() == null || user.getPassword().isEmpty()) {
-            user.setPassword(null);
-        }
-        userService.updateById(user);
-        return JsonResult.ok();
-    }
-
-    @RequireRole(3)
-    @Operation(summary = "删除用户（逻辑删除）")
-    @DeleteMapping("/{id}")
-    public JsonResult<Void> delete(@PathVariable Integer id) {
-        userService.removeById(id);
-        return JsonResult.ok();
-    }
-
     @Operation(summary = "修改密码",
-            description = "需要提供旧密码验证身份")
+            description = "任意登录用户可调用，需要提供旧密码验证身份")
     @PutMapping("/{id}/password")
     public JsonResult<Void> changePassword(@PathVariable Integer id,
                                            @RequestParam String oldPassword,
