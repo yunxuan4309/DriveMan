@@ -95,4 +95,19 @@ public class UserController {
         userService.changePassword(id, oldPassword, newPassword);
         return JsonResult.ok();
     }
+
+    @Operation(summary = "完善个人信息", description = "学员更新报名资料（姓名、身份证、手机号、地址、车型等）")
+    @PutMapping("/{id}/profile")
+    public JsonResult<Void> updateProfile(@PathVariable Integer id, 
+                                          @RequestBody User user,
+                                          HttpServletRequest request) {
+        // 验证当前用户只能修改自己的信息
+        CurrentUser currentUser = (CurrentUser) request.getAttribute("currentUser");
+        if (!currentUser.getUserId().equals(id)) {
+            throw new ServiceException(ServiceCode.ERROR_FORBIDDEN, "无权修改他人信息");
+        }
+        
+        userService.updateProfile(id, user);
+        return JsonResult.ok();
+    }
 }

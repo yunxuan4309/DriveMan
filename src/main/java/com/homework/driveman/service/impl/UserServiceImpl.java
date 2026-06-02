@@ -45,4 +45,41 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         user.setPassword(encoder.encode(newPassword));
         updateById(user);
     }
+
+    @Override
+    public void updateProfile(Integer userId, User user) {
+        // 查询原用户
+        User existUser = getById(userId);
+        if (existUser == null) {
+            throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "用户不存在");
+        }
+
+        // 只允许更新特定字段：realName, idCard, phone, address, licenseType, avatar
+        // 不允许修改：userId, role, username, password, status, auditReason
+        User updateUser = new User();
+        updateUser.setUserId(userId);
+        
+        // 白名单字段更新
+        if (user.getRealName() != null) {
+            updateUser.setRealName(user.getRealName());
+        }
+        if (user.getIdCard() != null) {
+            updateUser.setIdCard(user.getIdCard());
+        }
+        if (user.getPhone() != null) {
+            updateUser.setPhone(user.getPhone());
+        }
+        if (user.getAddress() != null) {
+            updateUser.setAddress(user.getAddress());
+        }
+        if (user.getLicenseType() != null) {
+            updateUser.setLicenseType(user.getLicenseType());
+        }
+        if (user.getAvatar() != null) {
+            updateUser.setAvatar(user.getAvatar());
+        }
+
+        // 更新到数据库
+        updateById(updateUser);
+    }
 }
