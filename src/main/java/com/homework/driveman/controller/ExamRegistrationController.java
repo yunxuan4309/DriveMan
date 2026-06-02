@@ -1,5 +1,6 @@
 package com.homework.driveman.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.ExamRegistration;
 import com.homework.driveman.entity.ExamSession;
@@ -171,10 +172,11 @@ public class ExamRegistrationController {
     }
 
     @RequireRole(3)
-    @Operation(summary = "查询所有考试报名记录")
+    @Operation(summary = "分页查询考试报名记录")
     @GetMapping
-    public JsonResult<List<ExamRegistration>> list() {
-        return JsonResult.ok(examRegistrationService.list());
+    public JsonResult<Page<ExamRegistration>> list(@RequestParam(defaultValue = "1") int page,
+                                                   @RequestParam(defaultValue = "10") int size) {
+        return JsonResult.ok(examRegistrationService.page(new Page<>(page, size)));
     }
 
     @Operation(summary = "根据学员ID查询其考试报名记录")

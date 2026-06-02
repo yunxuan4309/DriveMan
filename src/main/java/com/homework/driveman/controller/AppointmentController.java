@@ -1,5 +1,7 @@
 package com.homework.driveman.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.Appointment;
 import com.homework.driveman.service.IAppointmentService;
@@ -8,8 +10,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 /**
  * 约课管理控制器 — 学员预约/取消课程接口
@@ -22,11 +22,18 @@ public class AppointmentController {
     @Autowired
     private IAppointmentService appointmentService;
 
-    @Operation(summary = "查询所有约课记录")
+    @Operation(summary = "分页查询约课记录",
+            description = "可按学员ID或教练ID筛选")
     @GetMapping
-    public JsonResult<List<Appointment>> list() {
-        List<Appointment> list = appointmentService.list();
-        return JsonResult.ok(list);
+    public JsonResult<Page<Appointment>> list(@RequestParam(defaultValue = "1") int page,
+                                              @RequestParam(defaultValue = "10") int size,
+                                              @RequestParam(required = false) Integer studentId,
+                                              @RequestParam(required = false) Integer coachId) {
+        LambdaQueryWrapper<Appointment> wrapper = new LambdaQueryWrapper<Appointment>()
+                .eq(studentId != null, Appointment::getStudentId, studentId)
+                .eq(coachId != null, Appointment::getCoachId, coachId)
+                .orderByDesc(Appointment::getCreateTime);
+        return JsonResult.ok(appointmentService.page(new Page<>(page, size), wrapper));
     }
 
     @Operation(summary = "根据ID查询约课")
