@@ -19,4 +19,20 @@ public interface TrainingRecordMapper extends BaseMapper<TrainingRecord> {
     BigDecimal sumTrainingHours(@Param("studentId") Integer studentId,
                                 @Param("licenseType") String licenseType,
                                 @Param("subject") Integer subject);
+
+    /** 统计某个教练名下的学员总学时（所有学员所有科目总和） */
+    @Select("SELECT COALESCE(SUM(duration), 0) FROM training_record " +
+            "WHERE coach_id = #{coachId} AND is_deleted = 0")
+    BigDecimal sumHoursByCoach(@Param("coachId") Integer coachId);
+
+    /** 统计某个教练名下的学员人数（去重） */
+    @Select("SELECT COUNT(DISTINCT student_id) FROM training_record " +
+            "WHERE coach_id = #{coachId} AND is_deleted = 0")
+    Integer countDistinctStudentsByCoach(@Param("coachId") Integer coachId);
+
+    /** 统计某个教练名下某科目累计学时 */
+    @Select("SELECT COALESCE(SUM(duration), 0) FROM training_record " +
+            "WHERE coach_id = #{coachId} AND subject_type = #{subject} AND is_deleted = 0")
+    BigDecimal sumHoursByCoachAndSubject(@Param("coachId") Integer coachId,
+                                         @Param("subject") Integer subject);
 }
