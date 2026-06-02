@@ -2,18 +2,20 @@ package com.homework.driveman.controller;
 
 import com.homework.driveman.entity.User;
 import com.homework.driveman.service.IUserService;
+import com.homework.driveman.utils.CurrentUser;
 import com.homework.driveman.web.JsonResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * 用户管理控制器 — 学员/教练/管理员的 CRUD 接口
+ * 用户通用控制器 — 仅保留当前用户信息查询和密码修改
+ * 学员 CRUD 管理请移步 StudentController (/students)
  */
-@Tag(name = "用户管理")
+@Tag(name = "用户通用")
 @RestController
 @RequestMapping("/users")
 public class UserController {
@@ -21,39 +23,22 @@ public class UserController {
     @Autowired
     private IUserService userService;
 
-    @Operation(summary = "查询所有用户")
-    @GetMapping
-    public JsonResult<List<User>> list() {
-        List<User> list = userService.list();
-        return JsonResult.ok(list);
-    }
-
-    @Operation(summary = "根据ID查询用户")
-    @GetMapping("/{id}")
-    public JsonResult<User> getById(@PathVariable Integer id) {
-        User user = userService.getById(id);
+    @Operation(summary = "获取当前登录用户信息",
+            description = "从 Token 解析当前用户，适用于所有角色")
+    @GetMapping("/me")
+    public JsonResult<User> getCurrentUser(HttpServletRequest request) {
+        CurrentUser currentUser = (CurrentUser) request.getAttribute("currentUser");
+        User user = userService.getById(currentUser.getUserId());
         return JsonResult.ok(user);
     }
 
-    @Operation(summary = "新增用户")
-    @PostMapping
-    public JsonResult<Void> add(@RequestBody User user) {
-        userService.save(user);
-        return JsonResult.ok();
-    }
-
-    @Operation(summary = "修改用户")
-    @PutMapping("/{id}")
-    public JsonResult<Void> update(@PathVariable Integer id, @RequestBody User user) {
-        user.setUserId(id);
-        userService.updateById(user);
-        return JsonResult.ok();
-    }
-
-    @Operation(summary = "删除用户（逻辑删除）")
-    @DeleteMapping("/{id}")
-    public JsonResult<Void> delete(@PathVariable Integer id) {
-        userService.removeById(id);
+    @Operation(summary = "修改密码",
+            description = "任意登录用户可调用，需要提供旧密码验证身份")
+    @PutMapping("/{id}/password")
+    public JsonResult<Void> changePassword(@PathVariable Integer id,
+                                           @RequestParam String oldPassword,
+                                           @RequestParam String newPassword) {
+        userService.changePassword(id, oldPassword, newPassword);
         return JsonResult.ok();
     }
 }

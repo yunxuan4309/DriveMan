@@ -1,5 +1,6 @@
 package com.homework.driveman.controller;
 
+import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.File;
 import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
@@ -30,6 +31,7 @@ public class RegistrationController {
     @Autowired
     private IFileService fileService;
 
+    @RequireRole(3)
     @Operation(summary = "审核学员报名",
             description = "pass=true 审核通过（自动生成PDF报名表和准考证），pass=false 审核不通过（需填 reason）")
     @PutMapping("/{userId}/audit")
@@ -54,8 +56,8 @@ public class RegistrationController {
             fileService.saveRecord(userId, regPath,
                     "报名表_" + user.getRealName() + ".pdf", "registration_pdf");
 
-            // 生成准考证PDF
-            String ticketPath = pdfService.generateAdmissionTicket(user);
+            // 生成准考证PDF（注册审核时无考试场次，传 null）
+            String ticketPath = pdfService.generateAdmissionTicket(user, null);
             fileService.saveRecord(userId, ticketPath,
                     "准考证_" + user.getRealName() + ".pdf", "admission_ticket");
         } else {
@@ -68,6 +70,7 @@ public class RegistrationController {
         return JsonResult.ok();
     }
 
+    @RequireRole(3)
     @Operation(summary = "查询所有待审核的学员")
     @GetMapping("/pending")
     public JsonResult<java.util.List<User>> listPending() {

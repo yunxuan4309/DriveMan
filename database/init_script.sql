@@ -110,12 +110,14 @@ CREATE TABLE `training_record` (
     `appointment_id` INT UNSIGNED DEFAULT NULL COMMENT '关联的约课ID',
     `duration` DECIMAL(4,1) NOT NULL COMMENT '本次学时(小时)',
     `subject_type` TINYINT NOT NULL COMMENT '科目: 1-科目一,2-科目二,3-科目三,4-科目四',
+    `license_type` VARCHAR(10) NOT NULL DEFAULT 'C1' COMMENT '培训车型: C1/C2/B1...',
     `remark` VARCHAR(200) DEFAULT NULL COMMENT '备注',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录时间',
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
     `is_deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '软删除: 0-未删除,1-已删除',
     PRIMARY KEY (`id`),
     KEY `idx_student_subject` (`student_id`, `subject_type`),
+    KEY `idx_student_type_subject` (`student_id`, `license_type`, `subject_type`),
     KEY `idx_coach` (`coach_id`),
     KEY `idx_appointment` (`appointment_id`),
     KEY `idx_create_time` (`create_time`),
@@ -128,6 +130,7 @@ CREATE TABLE `training_record` (
 CREATE TABLE `exam_session` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '场次ID',
     `subject` TINYINT NOT NULL COMMENT '科目: 1-4',
+    `license_type` VARCHAR(10) NOT NULL DEFAULT 'C1' COMMENT '适用车型: C1/C2/B1...',
     `exam_date` DATE NOT NULL COMMENT '考试日期',
     `start_time` TIME DEFAULT NULL COMMENT '开始时间',
     `location` VARCHAR(200) NOT NULL COMMENT '考试地点',
@@ -138,6 +141,7 @@ CREATE TABLE `exam_session` (
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
     `is_deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '软删除: 0-未删除,1-已删除',
     PRIMARY KEY (`id`),
+    KEY `idx_type_subject` (`license_type`, `subject`),
     KEY `idx_subject_date` (`subject`, `exam_date`),
     KEY `idx_status` (`status`),
     KEY `idx_is_deleted` (`is_deleted`)
@@ -251,16 +255,33 @@ CREATE TABLE IF NOT EXISTS `fee_standard` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='费用标准表';
 
 -- ============================================
+-- 13. 车型科目配置表
+-- ============================================
+CREATE TABLE IF NOT EXISTS `license_config` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `license_type` VARCHAR(10) NOT NULL COMMENT '车型: C1/C2/B1...',
+    `subject` TINYINT NOT NULL COMMENT '科目: 1-4',
+    `required_hours` DECIMAL(4,1) NOT NULL DEFAULT 0 COMMENT '要求学时',
+    `exam_items` VARCHAR(500) DEFAULT NULL COMMENT '考试项目，逗号分隔',
+    `description` VARCHAR(200) DEFAULT NULL COMMENT '科目说明',
+    `sort_order` TINYINT NOT NULL DEFAULT 0 COMMENT '排序',
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_type_subject` (`license_type`, `subject`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='车型科目配置表';
+
+-- ============================================
 -- 初始化数据
 -- ============================================
 
 -- 1. 用户表 (密码均为 admin123)
 INSERT IGNORE INTO `user` (`role`, `username`, `password`, `real_name`, `id_card`, `phone`, `address`, `license_type`, `status`) VALUES
 (3, 'admin', '$2a$10$G6M7kH3lGH.FYWI3pMTwuuGwaDRHDWfbnR6530PeTL6ymSV.p29zS', '系统管理员', '11010119900307663X', '13800000000', '重庆市南岸区', NULL, 1),
-(2, '13812340001', '$2a$10$G6M7kH3lGH.FYWI3pMTwuuGwaDRHDWfbnR6530PeTL6ymSV.p29zS', '张教练', '510101199505012345', '13812340001', '重庆市南岸区', 'C1', 1),
-(2, '13812340002', '$2a$10$G6M7kH3lGH.FYWI3pMTwuuGwaDRHDWfbnR6530PeTL6ymSV.p29zS', '李教练', '510101198805026789', '13812340002', '重庆市南岸区', 'C1,C2', 1),
-(1, '15912340001', '$2a$10$G6M7kH3lGH.FYWI3pMTwuuGwaDRHDWfbnR6530PeTL6ymSV.p29zS', '王小明', '500101200001011234', '15912340001', '重庆市南岸区学府大道', 'C1', 1),
-(1, '15912340002', '$2a$10$G6M7kH3lGH.FYWI3pMTwuuGwaDRHDWfbnR6530PeTL6ymSV.p29zS', '李芳', '500101200105023456', '15912340002', '重庆市南岸区学府大道', 'C2', 1);
+(2, 'coach1', '$2a$10$G6M7kH3lGH.FYWI3pMTwuuGwaDRHDWfbnR6530PeTL6ymSV.p29zS', '张教练', '510101199505012345', '13812340001', '重庆市南岸区', 'C1', 1),
+(2, 'coach2', '$2a$10$G6M7kH3lGH.FYWI3pMTwuuGwaDRHDWfbnR6530PeTL6ymSV.p29zS', '李教练', '510101198805026789', '13812340002', '重庆市南岸区', 'C1,C2', 1),
+(1, 'student1', '$2a$10$G6M7kH3lGH.FYWI3pMTwuuGwaDRHDWfbnR6530PeTL6ymSV.p29zS', '王小明', '500101200001011234', '15912340001', '重庆市南岸区学府大道', 'C1', 1),
+(1, 'student2', '$2a$10$G6M7kH3lGH.FYWI3pMTwuuGwaDRHDWfbnR6530PeTL6ymSV.p29zS', '李芳', '500101200105023456', '15912340002', '重庆市南岸区学府大道', 'C2', 1);
 
 -- 2. 教练扩展表
 INSERT IGNORE INTO `coach` (`user_id`, `rating`, `coach_years`, `vehicle_type`) VALUES
@@ -278,15 +299,15 @@ INSERT IGNORE INTO `appointment` (`student_id`, `coach_id`, `start_time`, `end_t
 (5, 2, '2026-05-20 14:00:00', '2026-05-20 15:30:00', 0);
 
 -- 5. 学时记录
-INSERT IGNORE INTO `training_record` (`student_id`, `coach_id`, `appointment_id`, `duration`, `subject_type`) VALUES
-(4, 1, 1, 1.0, 2),
-(5, 2, 2, 1.5, 2);
+INSERT IGNORE INTO `training_record` (`student_id`, `coach_id`, `appointment_id`, `duration`, `subject_type`, `license_type`) VALUES
+(4, 1, 1, 1.0, 2, 'C1'),
+(5, 2, 2, 1.5, 2, 'C2');
 
 -- 6. 考试场次
-INSERT IGNORE INTO `exam_session` (`subject`, `exam_date`, `start_time`, `location`, `total_quota`, `remaining_quota`) VALUES
-(1, '2026-06-10', '09:00:00', '南岸区车管所', 100, 98),
-(2, '2026-06-15', '08:30:00', '南坪科目二考场', 80, 80),
-(3, '2026-06-20', '13:00:00', '八公里科目三考场', 60, 60);
+INSERT IGNORE INTO `exam_session` (`subject`, `license_type`, `exam_date`, `start_time`, `location`, `total_quota`, `remaining_quota`) VALUES
+(1, 'C1', '2026-06-10', '09:00:00', '南岸区车管所', 100, 98),
+(2, 'C1', '2026-06-15', '08:30:00', '南坪科目二考场', 80, 80),
+(3, 'C1', '2026-06-20', '13:00:00', '八公里科目三考场', 60, 60);
 
 -- 7. 系统配置
 INSERT IGNORE INTO `config` (`config_key`, `config_value`, `description`) VALUES
@@ -308,6 +329,26 @@ INSERT IGNORE INTO `fee_standard` (`license_type`, `subject`, `amount`, `descrip
 ('C2', NULL, 4280.00, 'C2全包套餐（含补考费）'),
 ('C1', 2, 200.00, '科目二模拟训练费'),
 ('C2', 2, 200.00, '科目二模拟训练费');
+
+-- 10. 车型科目配置（C1/C2/B1 各科目学时要求与考试项目）
+INSERT IGNORE INTO `license_config` (`license_type`, `subject`, `required_hours`, `exam_items`, `description`, `sort_order`) VALUES
+('C1', 1, 0,     NULL,                                                                               '科目一 道路交通安全法律、法规和相关知识', 1),
+('C1', 2, 16,    '倒车入库,侧方停车,坡道定点停车和起步,直角转弯,曲线行驶',                                                    '科目二 场地驾驶技能', 2),
+('C1', 3, 24,    '上车准备,起步,直线行驶,加减档操作,变更车道,靠边停车,直行通过路口,路口左转弯,路口右转弯,通过人行横道线,'
+                 '通过学校区域,通过公共汽车站,会车,超车,掉头,夜间行驶',                                                       '科目三 道路驾驶技能', 3),
+('C1', 4, 0,     NULL,                                                                               '科目四 安全文明驾驶常识', 4),
+
+('C2', 1, 0,     NULL,                                                                               '科目一 道路交通安全法律、法规和相关知识', 1),
+('C2', 2, 12,    '倒车入库,侧方停车,直角转弯,曲线行驶',                                                                  '科目二 场地驾驶技能（无坡道起步）', 2),
+('C2', 3, 22,    '上车准备,起步,直线行驶,加减档操作,变更车道,靠边停车,直行通过路口,路口左转弯,路口右转弯,通过人行横道线,'
+                 '通过学校区域,通过公共汽车站,会车,超车,掉头',                                                             '科目三 道路驾驶技能（无夜间行驶）', 3),
+('C2', 4, 0,     NULL,                                                                               '科目四 安全文明驾驶常识', 4),
+
+('B1', 1, 0,     NULL,                                                                               '科目一 道路交通安全法律、法规和相关知识', 1),
+('B1', 2, 20,    '倒车入库,侧方停车,坡道定点停车和起步,直角转弯,曲线行驶,通过单边桥,通过限宽门',                                          '科目二 场地驾驶技能', 2),
+('B1', 3, 30,    '上车准备,起步,直线行驶,加减档操作,变更车道,靠边停车,直行通过路口,路口左转弯,路口右转弯,通过人行横道线,'
+                 '通过学校区域,通过公共汽车站,会车,超车,掉头,夜间行驶,模拟山区公路',                                                    '科目三 道路驾驶技能', 3),
+('B1', 4, 0,     NULL,                                                                               '科目四 安全文明驾驶常识', 4);
 
 -- ============================================
 -- 脚本结束

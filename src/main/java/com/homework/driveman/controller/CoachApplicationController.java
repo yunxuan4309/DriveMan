@@ -1,5 +1,6 @@
 package com.homework.driveman.controller;
 
+import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.CoachApplication;
 import com.homework.driveman.entity.StudentCoach;
 import com.homework.driveman.exception.ServiceException;
@@ -31,6 +32,7 @@ public class CoachApplicationController {
     @Autowired
     private StudentCoachMapper studentCoachMapper;
 
+    @RequireRole(1)
     @Operation(summary = "学员提交教练选择申请")
     @PostMapping
     public JsonResult<Void> apply(@RequestParam Integer studentId,
@@ -44,6 +46,7 @@ public class CoachApplicationController {
         return JsonResult.ok();
     }
 
+    @RequireRole(3)
     @Operation(summary = "审核教练申请",
             description = "pass=true 审核通过（自动写入 student_coach 绑定），pass=false 拒绝并填写原因")
     @Transactional
@@ -77,6 +80,7 @@ public class CoachApplicationController {
         return JsonResult.ok();
     }
 
+    @RequireRole(3)
     @Operation(summary = "查询所有待审核的教练申请")
     @GetMapping("/pending")
     public JsonResult<List<CoachApplication>> listPending() {

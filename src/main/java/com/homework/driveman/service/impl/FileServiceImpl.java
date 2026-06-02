@@ -33,6 +33,16 @@ public class FileServiceImpl extends ServiceImpl<FileMapper, File> implements IF
             "registration_pdf", "admission_ticket"
     );
 
+    /** 各类文件允许的后缀（小写，不含点） */
+    private static final java.util.Map<String, Set<String>> ALLOWED_EXTENSIONS =
+            java.util.Map.of(
+                    "id_card_front", Set.of("jpg", "jpeg", "png", "bmp", "webp"),
+                    "id_card_back", Set.of("jpg", "jpeg", "png", "bmp", "webp"),
+                    "physical_exam", Set.of("jpg", "jpeg", "png", "bmp", "webp", "pdf"),
+                    "registration_pdf", Set.of("pdf"),
+                    "admission_ticket", Set.of("pdf")
+            );
+
     @Value("${drive.upload.path:./upload-files}")
     private String uploadPath;
 
@@ -49,6 +59,17 @@ public class FileServiceImpl extends ServiceImpl<FileMapper, File> implements IF
             throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "上传文件为空");
         }
 
+        // 校验文件扩展名
+        String originalName = multipartFile.getOriginalFilename();
+        if (originalName != null && originalName.contains(".")) {
+            String ext = originalName.substring(originalName.lastIndexOf('.') + 1).toLowerCase();
+            Set<String> allowedExts = ALLOWED_EXTENSIONS.get(fileType);
+            if (allowedExts != null && !allowedExts.contains(ext)) {
+                throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                        "文件类型 " + fileType + " 不支持 ." + ext + " 格式，仅支持: " + String.join(", ", allowedExts));
+            }
+        }
+
         // 构造存储目录: ./upload-files/{fileType}/
         String typeDir = fileType + "/";
         Path targetDir = Paths.get(uploadPath, typeDir);
@@ -60,8 +81,7 @@ public class FileServiceImpl extends ServiceImpl<FileMapper, File> implements IF
 
         // 生成文件名: {userId}_{时间戳}_{原始文件名}
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
-        String originalName = multipartFile.getOriginalFilename();
-        String storedName = userId + "_" + timestamp + "_" + originalName;
+        String storedName = userId + "_" + timestamp + "_" + (originalName != null ? originalName : "file");
 
         // 保存文件到磁盘
         Path targetFile = targetDir.resolve(storedName);

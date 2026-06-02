@@ -1,5 +1,6 @@
 package com.homework.driveman.controller;
 
+import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.File;
 import com.homework.driveman.service.IFileService;
 import com.homework.driveman.web.JsonResult;
@@ -86,6 +87,7 @@ public class FileController {
         }
     }
 
+    @RequireRole(3)
     @Operation(summary = "删除文件记录（逻辑删除，磁盘文件保留）")
     @DeleteMapping("/{id}")
     public JsonResult<Void> delete(@PathVariable Integer id) {
