@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 考试报名控制器 — 学员报名考试、管理员审核、录入成绩
@@ -187,5 +188,57 @@ public class ExamRegistrationController {
                 .orderByDesc(ExamRegistration::getApplyTime)
                 .list();
         return JsonResult.ok(list);
+    }
+
+    @RequireRole(1)
+    @Operation(summary = "查询我的各科成绩", description = "学员查看自己各科目考试成绩及合格状态")
+    @GetMapping("/my-scores/{studentId}")
+    public JsonResult<List<Map<String, Object>>> getMyScores(@PathVariable Integer studentId) {
+        // 查询该学员所有考试报名记录（包括未出成绩的）
+        List<ExamRegistration> examResults = examRegistrationService.lambdaQuery()
+                .eq(ExamRegistration::getStudentId, studentId)
+                .orderByAsc(ExamRegistration::getSubject)
+                .list();
+
+        // 组装返回数据
+        List<Map<String, Object>> result = examResults.stream().map(reg -> {
+            Map<String, Object> map = new java.util.HashMap<>();
+            map.put("subject", reg.getSubject());
+            map.put("subjectName", "科目" + reg.getSubject());
+            map.put("score", reg.getScore());
+            map.put("passStatus", reg.getPassStatus());
+            map.put("passResult", reg.getPassStatus() == null ? "待考试" : (reg.getPassStatus() == 1 ? "合格" : "不合格"));
+            map.put("status", reg.getStatus());
+            map.put("statusDesc", getStatusDesc(reg.getStatus()));
+            map.put("retakeCount", reg.getRetakeCount());
+            map.put("applyTime", reg.getApplyTime());
+            
+            // 查询考试场次信息
+            if (reg.getSessionId() != null) {
+                ExamSession session = examSessionService.getById(reg.getSessionId());
+                if (session != null) {
+                    map.put("examDate", session.getExamDate());
+                    map.put("location", session.getLocation());
+                }
+            }
+            
+            return map;
+        }).collect(java.util.stream.Collectors.toList());
+
+        return JsonResult.ok(result);
+    }
+
+    /**
+     * 获取报名状态描述
+     */
+    private String getStatusDesc(Integer status) {
+        if (status == null) return "未知";
+        return switch (status) {
+            case 0 -> "待审核";
+            case 1 -> "审核通过";
+            case 2 -> "审核不通过";
+            case 3 -> "已考试";
+            default -> "未知";
+        };
     }
 }
