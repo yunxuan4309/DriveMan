@@ -32,11 +32,38 @@ public class CoachController {
     private UserMapper userMapper;
 
     @Operation(summary = "分页查询教练",
-            description = "返回教练信息及关联的用户真实姓名、用户名、手机号")
+            description = "返回教练信息及关联的用户真实姓名、用户名、手机号；支持按用户名、姓名模糊搜索及准驾车型筛选")
     @GetMapping
     public JsonResult<Page<Map<String, Object>>> list(@RequestParam(defaultValue = "1") int page,
-                                                      @RequestParam(defaultValue = "10") int size) {
-        Page<Coach> coachPage = coachService.page(new Page<>(page, size));
+                                                      @RequestParam(defaultValue = "10") int size,
+                                                      @RequestParam(required = false) String username,
+                                                      @RequestParam(required = false) String realName,
+                                                      @RequestParam(required = false) String vehicleType) {
+        // 如果有用户名/姓名模糊搜索，先查 user 表获取匹配的教练 user_id
+        List<Integer> filterUserIds = null;
+        if ((username != null && !username.isEmpty()) || (realName != null && !realName.isEmpty())) {
+            LambdaQueryWrapper<User> userWrapper = new LambdaQueryWrapper<User>()
+                    .eq(User::getRole, 2)
+                    .like(username != null && !username.isEmpty(), User::getUsername, username)
+                    .like(realName != null && !realName.isEmpty(), User::getRealName, realName);
+            filterUserIds = userMapper.selectList(userWrapper).stream()
+                    .map(User::getUserId)
+                    .collect(Collectors.toList());
+            if (filterUserIds.isEmpty()) {
+                return JsonResult.ok(new Page<>(page, size));
+            }
+        }
+
+        // 查询教练表（如有筛选条件则按 user_id 过滤）
+        LambdaQueryWrapper<Coach> coachWrapper = new LambdaQueryWrapper<Coach>()
+                .orderByDesc(Coach::getCreateTime);
+        if (filterUserIds != null) {
+            coachWrapper.in(Coach::getUserId, filterUserIds);
+        }
+        if (vehicleType != null && !vehicleType.isEmpty()) {
+            coachWrapper.apply("FIND_IN_SET({0}, vehicle_type)", vehicleType);
+        }
+        Page<Coach> coachPage = coachService.page(new Page<>(page, size), coachWrapper);
 
         // 批量查询关联的用户信息
         List<Integer> userIds = coachPage.getRecords().stream()
