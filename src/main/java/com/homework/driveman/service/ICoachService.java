@@ -2,6 +2,9 @@ package com.homework.driveman.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.homework.driveman.entity.Coach;
+import com.homework.driveman.vo.CoachRatingVO;
+import com.homework.driveman.vo.CoachWorkloadVO;
+import com.homework.driveman.vo.StudentInfoVO;
 
 import java.util.List;
 
@@ -16,4 +19,29 @@ public interface ICoachService extends IService<Coach> {
      * @return 推荐教练列表（只包含 vehicleType 匹配的）
      */
     List<Coach> recommend(String licenseType, int topN);
+    /**
+     * 查看名下学员列表
+     */
+    List<StudentInfoVO> getMyStudents(Integer coachId);
+
+    /**
+     * 设置教练空闲时间
+     * @param coachId       教练ID
+     * @param availableTime 空闲时间 JSON 字符串
+     */
+    void setAvailableTime(Integer coachId, String availableTime);
+
+    /**
+     * 获取教练工作量统计
+     * @param coachId 教练ID
+     * @return 工作量统计VO
+     */
+    CoachWorkloadVO getWorkload(Integer coachId);
+
+    /**
+     * 获取教练个人评分
+     * @param coachId 教练ID
+     * @return 评分VO
+     */
+    CoachRatingVO getRating(Integer coachId);
 }
