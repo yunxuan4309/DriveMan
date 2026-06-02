@@ -24,7 +24,7 @@ import java.util.List;
 @Tag(name = "教练申请审核")
 @RestController
 @RequestMapping("/coach-applications")
-public class CoachApplicationController {
+public class  CoachApplicationController {
 
     @Autowired
     private CoachApplicationMapper coachApplicationMapper;
