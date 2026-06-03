@@ -201,11 +201,12 @@ public class ExamRegistrationController {
     }
 
     @RequireRole(3)
-    @Operation(summary = "分页查询考试报名记录")
+    @Operation(summary = "分页查询考试报名记录",
+            description = "返回报名记录及关联的学员姓名、考试日期、地点等信息")
     @GetMapping
-    public JsonResult<Page<ExamRegistration>> list(@RequestParam(defaultValue = "1") int page,
-                                                   @RequestParam(defaultValue = "10") int size) {
-        return JsonResult.ok(examRegistrationService.page(new Page<>(page, size)));
+    public JsonResult<Page<Map<String, Object>>> list(@RequestParam(defaultValue = "1") int page,
+                                                       @RequestParam(defaultValue = "10") int size) {
+        return JsonResult.ok(examRegistrationService.pageWithDetails(new Page<>(page, size)));
     }
 
     @Operation(summary = "根据学员ID查询其考试报名记录")
