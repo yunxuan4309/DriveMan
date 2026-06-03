@@ -54,12 +54,14 @@ public class RegistrationController {
             // 生成报名表PDF
             String regPath = pdfService.generateRegistrationForm(user);
             fileService.saveRecord(userId, regPath,
-                    "报名表_" + user.getRealName() + ".pdf", "registration_pdf");
+                    "报名表_" + user.getRealName() + ".pdf", "registration_pdf",
+                    "registration_form", userId);
 
             // 生成准考证PDF（注册审核时无考试场次，传 null）
             String ticketPath = pdfService.generateAdmissionTicket(user, null);
             fileService.saveRecord(userId, ticketPath,
-                    "准考证_" + user.getRealName() + ".pdf", "admission_ticket");
+                    "准考证_" + user.getRealName() + ".pdf", "admission_ticket",
+                    "exam_ticket", userId);
         } else {
             // 审核不通过
             user.setStatus(2);

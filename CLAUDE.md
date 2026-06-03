@@ -99,7 +99,7 @@ DriveMan/
 │   │   ├── FeeStandard.java                  #   费用标准表
 │   │   ├── LicenseConfig.java                #   驾照类型配置表
 │   │   ├── Notice.java                       #   通知公告表
-│   │   ├── File.java                         #   文件表
+│   │   ├── File.java                         #   文件表（含biz_type/biz_id/file_size/mime_type）
 │   │   ├── ExamVenue.java                    #   考场表
 │   │   ├── SpecialExamRecord.java            #   特种车考试记录表
 │   │   └── CoachVehicleApplication.java      #   教练准教车型变更申请表
@@ -274,7 +274,7 @@ DriveMan/
 | 通知公告 | `/notices` | 全部（登录） |
 | 学习进度 | `/progress` | 全部（登录） |
 | 统计报表 | `/statistics` | 管理员 |
-| 文件 | `/files` | 全部（登录） |
+| 文件 | `/files` | 全部（登录），删除限管理员 |
 | 特种车辆考试 | `/special-exam-records` | 管理员 |
 | 教练准教车型变更 | `/coach-portal/vehicle-applications` | 教练 |
 | 教练准教车型变更审核 | `/coach-vehicle-applications` | 管理员 |
@@ -345,7 +345,10 @@ mvn spring-boot:run
 - [x] 约课管理（预约/取消/教练确认拒绝）
 - [x] 学时记录管理
 - [x] 报名审核 + PDF 报名表/准考证生成（iText 7）
-- [x] 文件上传/下载/静态访问（本地存储）
+- [x] 文件上传/下载/预览/静态访问（本地磁盘存储，支持 `?preview=true` 浏览器预览）
+- [x] 文件系统重构：`biz_type` + `biz_id` 业务关联、`file_size` + `mime_type` 元数据、三端权限矩阵
+- [x] 培训记录表 PDF 生成（学员点击生成，含学时汇总、教练信息）
+- [x] 文件查询多维度过滤（`bizType`、`fileType`、`keyword` 文件名搜索）
 - [x] 考试场次 CRUD + 名额管理 + 考试报名审核 + 成绩录入 + 补考
 - [x] 教练端门户（查看学员、录入学时、确认约课、空闲时间、工作量统计、评分查看）
 - [x] 费用标准管理（CRUD + 按车型查询）

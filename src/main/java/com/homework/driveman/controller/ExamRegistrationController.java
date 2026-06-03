@@ -164,7 +164,7 @@ public class ExamRegistrationController {
                 String ticketPath = pdfService.generateAdmissionTicket(student, session);
                 fileService.saveRecord(registration.getStudentId(), ticketPath,
                         "准考证_" + student.getRealName() + "_科目" + session.getSubject() + ".pdf",
-                        "admission_ticket");
+                        "admission_ticket", "exam_ticket", registration.getId());
             }
         } else {
             registration.setStatus(2);

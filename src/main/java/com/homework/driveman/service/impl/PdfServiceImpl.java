@@ -21,11 +21,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.FileOutputStream;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
 
 /**
  * PDF 生成实现 — 基于 iText 7
@@ -112,6 +114,92 @@ public class PdfServiceImpl implements IPdfService {
         } catch (Exception e) {
             log.error("报名表PDF生成失败", e);
             throw new ServiceException(ServiceCode.ERROR_INSERT, "报名表PDF生成失败");
+        }
+        return relativePath.replace("\\", "/");
+    }
+
+    @Override
+    public String generateTrainingRecord(User student, String coachName, String schoolName,
+                                          Map<Integer, BigDecimal> hoursPerSubject, String licenseType) {
+        String relativePath = "training_record/" + student.getUserId() + "_record_" + LocalDate.now() + ".pdf";
+        Path targetPath = Paths.get(uploadPath, relativePath);
+        try {
+            Files.createDirectories(targetPath.getParent());
+        } catch (Exception e) {
+            throw new ServiceException(ServiceCode.ERROR_INSERT, "创建PDF目录失败");
+        }
+
+        try (FileOutputStream fos = new FileOutputStream(targetPath.toFile());
+             PdfDocument pdf = new PdfDocument(new PdfWriter(fos));
+             Document doc = new Document(pdf, PageSize.A4)) {
+
+            PdfFont font = getChineseFont();
+            doc.setFont(font);
+            doc.setFontSize(12);
+
+            // 标题
+            Paragraph title = new Paragraph("机动车驾驶培训记录")
+                    .setFontSize(22).setBold()
+                    .setHorizontalAlignment(HorizontalAlignment.CENTER)
+                    .setMarginBottom(30);
+            doc.add(title);
+
+            // 驾校名称
+            doc.add(new Paragraph("驾校名称: " + (schoolName != null ? schoolName : ""))
+                    .setMarginBottom(5));
+            doc.add(new Paragraph("培训车型: " + (licenseType != null ? licenseType : ""))
+                    .setMarginBottom(20));
+
+            // 学员信息
+            float[] colWidths = {120, 200, 120, 200};
+            Table infoTable = new Table(UnitValue.createPercentArray(colWidths));
+            infoTable.setWidth(UnitValue.createPercentValue(100));
+
+            addRow(infoTable, "姓名", student.getRealName(), "性别", inferGender(student.getIdCard()));
+            addRow(infoTable, "身份证号", student.getIdCard(), "手机号", student.getPhone());
+            addRow(infoTable, "教练姓名", coachName != null ? coachName : "", "培训车型", licenseType != null ? licenseType : "");
+
+            doc.add(infoTable);
+
+            // 学时汇总表
+            Paragraph hoursTitle = new Paragraph("\n\n学时汇总")
+                    .setBold().setFontSize(14).setMarginBottom(10);
+            doc.add(hoursTitle);
+
+            float[] hourCols = {100, 200, 100};
+            Table hourTable = new Table(UnitValue.createPercentArray(hourCols));
+            hourTable.setWidth(UnitValue.createPercentValue(100));
+
+            // 表头
+            hourTable.addHeaderCell(new Cell().add(new Paragraph("科目").setBold()));
+            hourTable.addHeaderCell(new Cell().add(new Paragraph("科目名称").setBold()));
+            hourTable.addHeaderCell(new Cell().add(new Paragraph("累计学时").setBold()));
+
+            // 按科目 1-4 顺序显示
+            String[] subjectNames = {"", "科目一", "科目二", "科目三", "科目四"};
+            for (int i = 1; i <= 4; i++) {
+                BigDecimal hours = hoursPerSubject.getOrDefault(i, BigDecimal.ZERO);
+                String subjectName = i < subjectNames.length ? subjectNames[i] : "科目" + i;
+                hourTable.addCell(new Cell().add(new Paragraph(String.valueOf(i))));
+                hourTable.addCell(new Cell().add(new Paragraph(subjectName)));
+                hourTable.addCell(new Cell().add(new Paragraph(hours.toString() + " 小时")));
+            }
+            doc.add(hourTable);
+
+            // 底部信息
+            doc.add(new Paragraph("\n\n\n"));
+            doc.add(new Paragraph("教练签名: ____________    日期: ____________")
+                    .setMarginBottom(5));
+            doc.add(new Paragraph("驾校盖章: ____________    日期: ____________")
+                    .setMarginBottom(5));
+            doc.add(new Paragraph("\n生成日期: " + LocalDate.now()));
+
+            log.info("培训记录表PDF生成成功: {}", targetPath);
+        } catch (ServiceException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("培训记录表PDF生成失败", e);
+            throw new ServiceException(ServiceCode.ERROR_INSERT, "培训记录表PDF生成失败");
         }
         return relativePath.replace("\\", "/");
     }

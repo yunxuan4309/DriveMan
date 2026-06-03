@@ -174,10 +174,14 @@ CREATE TABLE `exam_registration` (
 -- ============================================
 CREATE TABLE `file` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '文件ID',
-    `user_id` INT UNSIGNED NOT NULL COMMENT '上传者user_id',
+    `user_id` INT UNSIGNED NOT NULL COMMENT '上传者user_id（文件归属人）',
     `file_name` VARCHAR(200) NOT NULL COMMENT '原始文件名',
-    `file_path` VARCHAR(500) NOT NULL COMMENT '存储路径',
-    `file_type` VARCHAR(20) NOT NULL COMMENT '文件类型: id_card_front, id_card_back, physical_exam, registration_pdf, admission_ticket',
+    `file_path` VARCHAR(500) NOT NULL COMMENT '存储路径（相对 upload 根目录）',
+    `file_size` BIGINT DEFAULT NULL COMMENT '文件大小（字节）',
+    `mime_type` VARCHAR(100) DEFAULT NULL COMMENT 'MIME类型',
+    `file_type` VARCHAR(20) NOT NULL COMMENT '文件分类（旧字段，向前兼容）',
+    `biz_type` VARCHAR(30) DEFAULT NULL COMMENT '业务类型: user_profile/enrollment/exam_ticket/registration_form/training_record/physical_exam/license_upgrade/coach_qualification',
+    `biz_id` INT UNSIGNED DEFAULT NULL COMMENT '业务记录ID',
     `upload_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '上传时间',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
@@ -185,6 +189,7 @@ CREATE TABLE `file` (
     PRIMARY KEY (`id`),
     KEY `idx_user_id` (`user_id`),
     KEY `idx_file_type` (`file_type`),
+    KEY `idx_biz` (`biz_type`, `biz_id`),
     KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='文件表';
 
