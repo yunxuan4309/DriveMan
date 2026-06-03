@@ -12,6 +12,7 @@ import com.homework.driveman.mapper.StudentCoachMapper;
 import com.homework.driveman.mapper.TrainingRecordMapper;
 import com.homework.driveman.service.IAppointmentService;
 import com.homework.driveman.service.ICoachPortalService;
+import com.homework.driveman.service.ICoachVehicleApplicationService;
 import com.homework.driveman.service.IUserService;
 import com.homework.driveman.utils.CurrentUser;
 import com.homework.driveman.web.JsonResult;
@@ -56,6 +57,9 @@ public class CoachPortalController {
 
     @Autowired
     private IUserService userService;
+
+    @Autowired
+    private ICoachVehicleApplicationService coachVehicleApplicationService;
 
     /**
      * 从当前登录用户中提取 coachId（coach 表主键）
@@ -257,7 +261,47 @@ public class CoachPortalController {
         return JsonResult.ok(rating);
     }
 
-    // ==================== 8. 查看待确认的约课列表 ====================
+    // ==================== 8. 提交/查看准教车型变更申请 ====================
+
+    @RequireRole(2)
+    @Operation(summary = "提交准教车型变更申请",
+            description = "教练申请增加可教车型，提交后由管理员审核。不能与当前车型相同，且不能有未处理的申请。")
+    @PostMapping("/vehicle-applications")
+    public JsonResult<Void> submitVehicleApplication(HttpServletRequest request,
+                                                      @RequestParam String requestedVehicleType,
+                                                      @RequestParam(required = false) String applyReason) {
+        Integer coachId = resolveCoachId(request);
+        coachVehicleApplicationService.submitApplication(coachId, requestedVehicleType, applyReason);
+        return JsonResult.ok();
+    }
+
+    @RequireRole(2)
+    @Operation(summary = "查看本人的准教车型变更申请记录",
+            description = "返回当前教练所有提交过申请的历史记录")
+    @GetMapping("/vehicle-applications")
+    public JsonResult<List<Map<String, Object>>> listMyVehicleApplications(HttpServletRequest request) {
+        Integer coachId = resolveCoachId(request);
+        List<com.homework.driveman.entity.CoachVehicleApplication> list =
+                coachVehicleApplicationService.lambdaQuery()
+                        .eq(com.homework.driveman.entity.CoachVehicleApplication::getCoachId, coachId)
+                        .orderByDesc(com.homework.driveman.entity.CoachVehicleApplication::getApplyTime)
+                        .list();
+        List<Map<String, Object>> result = list.stream().map(app -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", app.getId());
+            map.put("currentVehicleType", app.getCurrentVehicleType());
+            map.put("requestedVehicleType", app.getRequestedVehicleType());
+            map.put("applyReason", app.getApplyReason());
+            map.put("status", app.getStatus());
+            map.put("auditReason", app.getAuditReason());
+            map.put("applyTime", app.getApplyTime());
+            map.put("auditTime", app.getAuditTime());
+            return map;
+        }).collect(Collectors.toList());
+        return JsonResult.ok(result);
+    }
+
+    // ==================== 9. 查看待确认的约课列表 ====================
 
     @RequireRole(2)
     @Operation(summary = "查看待确认约课", description = "列出当前教练所有状态为「待确认」的约课请求")

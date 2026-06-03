@@ -209,14 +209,47 @@ public class ExamRegistrationController {
         return JsonResult.ok(examRegistrationService.pageWithDetails(new Page<>(page, size)));
     }
 
-    @Operation(summary = "根据学员ID查询其考试报名记录")
+    @Operation(summary = "根据学员ID查询其考试报名记录",
+            description = "返回报名记录及关联的考试日期、地点等场次信息")
     @GetMapping("/student/{studentId}")
-    public JsonResult<List<ExamRegistration>> listByStudent(@PathVariable Integer studentId) {
+    public JsonResult<List<Map<String, Object>>> listByStudent(@PathVariable Integer studentId) {
         List<ExamRegistration> list = examRegistrationService.lambdaQuery()
                 .eq(ExamRegistration::getStudentId, studentId)
                 .orderByDesc(ExamRegistration::getApplyTime)
                 .list();
-        return JsonResult.ok(list);
+
+        List<Map<String, Object>> result = list.stream().map(reg -> {
+            Map<String, Object> map = new java.util.LinkedHashMap<>();
+            map.put("id", reg.getId());
+            map.put("studentId", reg.getStudentId());
+            map.put("sessionId", reg.getSessionId());
+            map.put("subject", reg.getSubject());
+            map.put("subjectName", "科目" + reg.getSubject());
+            map.put("status", reg.getStatus());
+            map.put("score", reg.getScore());
+            map.put("passStatus", reg.getPassStatus());
+            map.put("retakeCount", reg.getRetakeCount());
+            map.put("applyTime", reg.getApplyTime());
+            map.put("auditTime", reg.getAuditTime());
+
+            // 关联场次信息
+            if (reg.getSessionId() != null) {
+                ExamSession session = examSessionService.getById(reg.getSessionId());
+                if (session != null) {
+                    map.put("examDate", session.getExamDate());
+                    map.put("startTime", session.getStartTime());
+                    map.put("location", session.getLocation());
+                    map.put("licenseType", session.getLicenseType());
+                    map.put("totalQuota", session.getTotalQuota());
+                    map.put("remainingQuota", session.getRemainingQuota());
+                    map.put("venueName", session.getLocation());
+                }
+            }
+
+            return map;
+        }).collect(java.util.stream.Collectors.toList());
+
+        return JsonResult.ok(result);
     }
 
     @RequireRole(1)
