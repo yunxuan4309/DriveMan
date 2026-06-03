@@ -2,21 +2,28 @@ package com.homework.driveman.service.impl;
 
 import com.homework.driveman.entity.Coach;
 import com.homework.driveman.entity.ExamRegistration;
+import com.homework.driveman.entity.ExamSession;
 import com.homework.driveman.entity.StudentCoach;
+import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
 import com.homework.driveman.mapper.CoachMapper;
 import com.homework.driveman.mapper.ExamRegistrationMapper;
+import com.homework.driveman.mapper.ExamSessionMapper;
 import com.homework.driveman.mapper.StudentCoachMapper;
 import com.homework.driveman.mapper.TrainingRecordMapper;
+import com.homework.driveman.mapper.UserMapper;
 import com.homework.driveman.service.ICoachPortalService;
 import com.homework.driveman.web.ServiceCode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -37,6 +44,12 @@ public class CoachPortalServiceImpl implements ICoachPortalService {
 
     @Autowired
     private ExamRegistrationMapper examRegistrationMapper;
+
+    @Autowired
+    private UserMapper userMapper;
+
+    @Autowired
+    private ExamSessionMapper examSessionMapper;
 
     @Override
     public Map<String, Object> getStatistics(Integer coachId) {
@@ -109,5 +122,87 @@ public class CoachPortalServiceImpl implements ICoachPortalService {
         result.put("coachYears", coach.getCoachYears());
         result.put("vehicleType", coach.getVehicleType());
         return result;
+    }
+
+    @Override
+    public List<Map<String, Object>> getStudentExamRegistrations(Integer coachId) {
+        // 校验教练是否存在
+        Coach coach = coachMapper.selectById(coachId);
+        if (coach == null) {
+            throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "教练不存在");
+        }
+
+        // 查出所有正常绑定的学员
+        List<StudentCoach> bindings = studentCoachMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<StudentCoach>()
+                        .eq(StudentCoach::getCoachId, coachId)
+                        .eq(StudentCoach::getStatus, 1));
+        if (bindings.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Integer> studentIds = bindings.stream()
+                .map(StudentCoach::getStudentId)
+                .collect(Collectors.toList());
+
+        // 查这些学员的考试报名记录
+        List<ExamRegistration> registrations = examRegistrationMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ExamRegistration>()
+                        .in(ExamRegistration::getStudentId, studentIds)
+                        .orderByDesc(ExamRegistration::getApplyTime));
+        if (registrations.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 批量加载学员姓名
+        Map<Integer, User> userMap = userMapper.selectBatchIds(studentIds).stream()
+                .collect(Collectors.toMap(User::getUserId, u -> u, (a, b) -> a));
+
+        // 批量加载场次信息
+        Set<Integer> sessionIds = registrations.stream()
+                .map(ExamRegistration::getSessionId)
+                .collect(Collectors.toSet());
+        Map<Integer, ExamSession> sessionMap = examSessionMapper.selectBatchIds(sessionIds).stream()
+                .collect(Collectors.toMap(ExamSession::getId, s -> s, (a, b) -> a));
+
+        // 组装结果
+        return registrations.stream().map(reg -> {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("id", reg.getId());
+            map.put("studentId", reg.getStudentId());
+
+            User student = userMap.get(reg.getStudentId());
+            map.put("studentName", student != null ? student.getRealName() : null);
+
+            map.put("sessionId", reg.getSessionId());
+            map.put("subject", reg.getSubject());
+            map.put("status", reg.getStatus());
+
+            // 状态中文描述
+            String statusDesc = switch (reg.getStatus()) {
+                case 0 -> "待审核";
+                case 1 -> "审核通过";
+                case 2 -> "审核不通过";
+                case 3 -> "已考试";
+                default -> "未知";
+            };
+            map.put("statusDesc", statusDesc);
+
+            map.put("score", reg.getScore());
+            map.put("passStatus", reg.getPassStatus());
+            map.put("retakeCount", reg.getRetakeCount());
+            map.put("applyTime", reg.getApplyTime());
+            map.put("auditTime", reg.getAuditTime());
+
+            ExamSession session = sessionMap.get(reg.getSessionId());
+            if (session != null) {
+                map.put("examDate", session.getExamDate());
+                map.put("startTime", session.getStartTime());
+                map.put("location", session.getLocation());
+                map.put("licenseType", session.getLicenseType());
+            }
+
+            return map;
+        }).collect(Collectors.toList());
     }
 }

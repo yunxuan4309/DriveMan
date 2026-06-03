@@ -1,6 +1,7 @@
 package com.homework.driveman.service;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -21,4 +22,11 @@ public interface ICoachPortalService {
      * @return 评分数据
      */
     Map<String, Object> getRating(Integer coachId);
+
+    /**
+     * 获取教练名下学员的考试报名记录
+     * @param coachId 教练ID（coach表主键）
+     * @return 学员考试报名列表（含学员姓名、场次信息、审核状态）
+     */
+    List<Map<String, Object>> getStudentExamRegistrations(Integer coachId);
 }

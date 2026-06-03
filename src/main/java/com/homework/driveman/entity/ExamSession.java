@@ -45,6 +45,10 @@ public class ExamSession {
     /** 状态: 1-报名中, 2-已满, 3-已结束 */
     private Integer status;
 
+    /** 乐观锁版本号 */
+    @Version
+    private Integer version = 1;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 

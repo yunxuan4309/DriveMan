@@ -110,7 +110,18 @@ public class CoachPortalController {
         return JsonResult.ok(result);
     }
 
-    // ==================== 2. 录入学时 ====================
+    // ==================== 2. 查看名下学员考试报名 ====================
+
+    @RequireRole(2)
+    @Operation(summary = "查看名下学员考试报名",
+            description = "返回当前教练名下所有学员的考试报名记录，包含学员姓名、场次信息、审核状态（不可审核）")
+    @GetMapping("/exam-registrations")
+    public JsonResult<List<Map<String, Object>>> getStudentExamRegistrations(HttpServletRequest request) {
+        Integer coachId = resolveCoachId(request);
+        return JsonResult.ok(coachPortalService.getStudentExamRegistrations(coachId));
+    }
+
+    // ==================== 3. 录入学时 ====================
 
     @RequireRole(2)
     @Operation(summary = "录入学时", description = "教练为名下学员录入学时记录（需指定学员ID、科目类型、学时数等）")
@@ -134,7 +145,7 @@ public class CoachPortalController {
         return JsonResult.ok();
     }
 
-    // ==================== 3. 约课确认/拒绝 ====================
+    // ==================== 4. 约课确认/拒绝 ====================
 
     @RequireRole(2)
     @Operation(summary = "确认约课", description = "教练确认学员的约课请求，将状态从「待确认」更新为「已确认」")
@@ -181,7 +192,7 @@ public class CoachPortalController {
         return JsonResult.ok();
     }
 
-    // ==================== 4. 设置空闲时间（更新 JSON 字段） ====================
+    // ==================== 5. 设置空闲时间（更新 JSON 字段） ====================
 
     @RequireRole(2)
     @Operation(summary = "设置空闲时间", description = "教练设置/更新自己的空闲时间，以 JSON 格式存入 available_time 字段")
@@ -224,7 +235,7 @@ public class CoachPortalController {
         return JsonResult.ok(result);
     }
 
-    // ==================== 5. 查看个人工作量统计 ====================
+    // ==================== 6. 查看个人工作量统计 ====================
 
     @RequireRole(2)
     @Operation(summary = "查看个人工作量统计", description = "返回教练的工作量统计：学员数、总学时、各科目学时、通过率")
@@ -235,7 +246,7 @@ public class CoachPortalController {
         return JsonResult.ok(stats);
     }
 
-    // ==================== 6. 查看个人评分 ====================
+    // ==================== 7. 查看个人评分 ====================
 
     @RequireRole(2)
     @Operation(summary = "查看个人评分", description = "返回当前教练的综合评分、执教年限和准教车型信息")
@@ -246,7 +257,7 @@ public class CoachPortalController {
         return JsonResult.ok(rating);
     }
 
-    // ==================== 7. 查看待确认的约课列表 ====================
+    // ==================== 8. 查看待确认的约课列表 ====================
 
     @RequireRole(2)
     @Operation(summary = "查看待确认约课", description = "列出当前教练所有状态为「待确认」的约课请求")
@@ -261,7 +272,7 @@ public class CoachPortalController {
         return JsonResult.ok(list);
     }
 
-    // ==================== 8. 查看教练的约课日历（按日期范围筛选） ====================
+    // ==================== 9. 查看教练的约课日历（按日期范围筛选） ====================
 
     @RequireRole(2)
     @Operation(summary = "查看约课日历", description = "按日期范围查看该教练的所有已确认约课，用于规划时间")

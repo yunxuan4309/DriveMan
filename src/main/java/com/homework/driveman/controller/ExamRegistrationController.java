@@ -15,10 +15,12 @@ import com.homework.driveman.service.IExamSessionService;
 import com.homework.driveman.service.IFileService;
 import com.homework.driveman.service.IPdfService;
 import com.homework.driveman.service.IUserService;
+import com.homework.driveman.utils.CurrentUser;
 import com.homework.driveman.web.JsonResult;
 import com.homework.driveman.web.ServiceCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -74,7 +76,14 @@ public class ExamRegistrationController {
     @Operation(summary = "学员报名考试")
     @PostMapping
     public JsonResult<Void> apply(@RequestParam Integer studentId,
-                                  @RequestParam Integer sessionId) {
+                                  @RequestParam Integer sessionId,
+                                  HttpServletRequest request) {
+        // 只能为自己报名
+        CurrentUser currentUser = (CurrentUser) request.getAttribute("currentUser");
+        if (!currentUser.getUserId().equals(studentId)) {
+            throw new ServiceException(ServiceCode.ERROR_FORBIDDEN, "只能为自己报名考试");
+        }
+
         ExamSession session = examSessionService.getById(sessionId);
         if (session == null) {
             throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "考试场次不存在");
@@ -131,7 +140,7 @@ public class ExamRegistrationController {
         }
 
         if (pass) {
-            // 审核通过 → 扣减场次剩余名额
+            // 审核通过 → 扣减场次剩余名额（乐观锁防并发）
             ExamSession session = examSessionService.getById(registration.getSessionId());
             if (session == null || session.getRemainingQuota() <= 0) {
                 throw new ServiceException(ServiceCode.ERROR_CONFLICT, "场次名额不足");
@@ -141,7 +150,10 @@ public class ExamRegistrationController {
             if (session.getRemainingQuota() == 0) {
                 session.setStatus(2);
             }
-            examSessionService.updateById(session);
+            boolean sessionUpdated = examSessionService.updateById(session);
+            if (!sessionUpdated) {
+                throw new ServiceException(ServiceCode.ERROR_CONFLICT, "名额已被其他管理员占用，请刷新后重试");
+            }
 
             registration.setStatus(1);
             registration.setAuditTime(LocalDateTime.now());

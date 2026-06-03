@@ -23,12 +23,13 @@ import com.homework.driveman.service.ITrainingRecordService;
 import java.util.List;
 
 /**
- * 教练端个人业务控制器
- * 统一前缀 /coach，处理教练登录后的个人操作（查看学员、学时录入、工作量等）
+ * 教练端个人业务控制器（已禁用）
+ * 功能已合并至 CoachPortalController (/coach-portal)
+ * 保留代码备用，如需启用，取消下方 @Tag/@RestController/@RequestMapping 注释即可
  */
-@Tag(name = "教练端业务")
-@RestController
-@RequestMapping("/coach")
+//@Tag(name = "教练端业务")
+//@RestController
+//@RequestMapping("/coach")
 public class CoachPortalController1 {
 
     @Autowired

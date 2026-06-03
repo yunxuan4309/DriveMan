@@ -4,10 +4,14 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.Appointment;
+import com.homework.driveman.exception.ServiceException;
 import com.homework.driveman.service.IAppointmentService;
+import com.homework.driveman.utils.CurrentUser;
 import com.homework.driveman.web.JsonResult;
+import com.homework.driveman.web.ServiceCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -52,16 +56,23 @@ public class AppointmentController {
     }
 
     @RequireRole({1, 3})
-    @Operation(summary = "取消约课", description = "将约课状态置为已取消，可选填取消原因")
+    @Operation(summary = "取消约课", description = "将约课状态置为已取消，可选填取消原因；学员只能取消自己的约课")
     @PutMapping("/{id}/cancel")
     public JsonResult<Void> cancel(@PathVariable Integer id,
-                                   @RequestParam(required = false) String reason) {
+                                   @RequestParam(required = false) String reason,
+                                   HttpServletRequest request) {
+        CurrentUser currentUser = (CurrentUser) request.getAttribute("currentUser");
         Appointment appointment = appointmentService.getById(id);
-        if (appointment != null) {
-            appointment.setStatus(3);
-            appointment.setCancelReason(reason);
-            appointmentService.updateById(appointment);
+        if (appointment == null) {
+            throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "约课记录不存在");
         }
+        // 学员只能取消自己的约课，管理员可取消任何约课
+        if (currentUser.getRole() == 1 && !appointment.getStudentId().equals(currentUser.getUserId())) {
+            throw new ServiceException(ServiceCode.ERROR_FORBIDDEN, "无权取消他人的约课");
+        }
+        appointment.setStatus(3);
+        appointment.setCancelReason(reason);
+        appointmentService.updateById(appointment);
         return JsonResult.ok();
     }
 }
