@@ -1,28 +1,15 @@
 -- ============================================
--- 数据库名称: driveman
--- 说明: 入口脚本 — 完整建库（合并 full/ 下三个模块）
--- 等效于顺序执行:
---   full/00_create_database.sql
---   full/01_schema.sql
---   full/02_init_data.sql
--- 执行: mysql -u root -proot < init_script.sql
+-- 01 — 数据表结构
+-- 说明: 全部 15 张表的 CREATE TABLE 语句
+-- 前置: 数据库 driveman 已创建
+-- 执行: mysql -u root -proot driveman < 01_schema.sql
 -- ============================================
-
--- ============================================
--- 00 — 创建数据库
--- ============================================
-DROP DATABASE IF EXISTS `driveman`;
-CREATE DATABASE IF NOT EXISTS `driveman`
-CHARACTER SET utf8mb4
-COLLATE utf8mb4_general_ci;
 
 USE `driveman`;
 
 -- ============================================
--- 01 — 数据表结构
--- ============================================
-
 -- 1. 用户表
+-- ============================================
 CREATE TABLE `user` (
     `user_id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '用户ID',
     `role` TINYINT NOT NULL DEFAULT 1 COMMENT '角色: 1-学员,2-教练,3-管理员',
@@ -47,7 +34,9 @@ CREATE TABLE `user` (
     KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
+-- ============================================
 -- 2. 教练扩展表
+-- ============================================
 CREATE TABLE `coach` (
     `coach_id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '教练ID',
     `user_id` INT UNSIGNED NOT NULL COMMENT '关联user.user_id',
@@ -64,7 +53,9 @@ CREATE TABLE `coach` (
     KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='教练扩展表';
 
+-- ============================================
 -- 3. 学员-教练关联表
+-- ============================================
 CREATE TABLE `student_coach` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
     `student_id` INT UNSIGNED NOT NULL COMMENT '学员user_id',
@@ -81,7 +72,9 @@ CREATE TABLE `student_coach` (
     KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='学员-教练关联表';
 
+-- ============================================
 -- 4. 约课表
+-- ============================================
 CREATE TABLE `appointment` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '约课ID',
     `student_id` INT UNSIGNED NOT NULL COMMENT '学员user_id',
@@ -102,7 +95,9 @@ CREATE TABLE `appointment` (
     KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='约课表';
 
+-- ============================================
 -- 5. 学时记录表
+-- ============================================
 CREATE TABLE `training_record` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '记录ID',
     `student_id` INT UNSIGNED NOT NULL COMMENT '学员user_id',
@@ -124,7 +119,9 @@ CREATE TABLE `training_record` (
     KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='学时记录表';
 
+-- ============================================
 -- 6. 考试场次表
+-- ============================================
 CREATE TABLE `exam_session` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '场次ID',
     `subject` TINYINT NOT NULL COMMENT '科目: 1-4',
@@ -147,7 +144,9 @@ CREATE TABLE `exam_session` (
     KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='考试场次表';
 
+-- ============================================
 -- 7. 考试报名表
+-- ============================================
 CREATE TABLE `exam_registration` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '报名ID',
     `student_id` INT UNSIGNED NOT NULL COMMENT '学员user_id',
@@ -169,7 +168,9 @@ CREATE TABLE `exam_registration` (
     KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='考试报名表';
 
+-- ============================================
 -- 8. 文件表
+-- ============================================
 CREATE TABLE `file` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '文件ID',
     `user_id` INT UNSIGNED NOT NULL COMMENT '上传者user_id',
@@ -186,7 +187,9 @@ CREATE TABLE `file` (
     KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='文件表';
 
+-- ============================================
 -- 9. 系统配置表
+-- ============================================
 CREATE TABLE `config` (
     `config_key` VARCHAR(50) NOT NULL COMMENT '配置键',
     `config_value` VARCHAR(500) NOT NULL COMMENT '配置值',
@@ -196,7 +199,9 @@ CREATE TABLE `config` (
     PRIMARY KEY (`config_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统配置表';
 
+-- ============================================
 -- 10. 教练选择申请表
+-- ============================================
 CREATE TABLE `coach_application` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `student_id` INT UNSIGNED NOT NULL COMMENT '学员user_id',
@@ -214,7 +219,9 @@ CREATE TABLE `coach_application` (
     KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='教练选择申请表';
 
+-- ============================================
 -- 11. 系统公告表
+-- ============================================
 CREATE TABLE IF NOT EXISTS `notice` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `title` VARCHAR(100) NOT NULL,
@@ -229,7 +236,9 @@ CREATE TABLE IF NOT EXISTS `notice` (
     KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统公告表';
 
+-- ============================================
 -- 12. 费用标准表
+-- ============================================
 CREATE TABLE IF NOT EXISTS `fee_standard` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `license_type` VARCHAR(10) NOT NULL COMMENT 'C1/C2/N1...',
@@ -242,7 +251,9 @@ CREATE TABLE IF NOT EXISTS `fee_standard` (
     KEY `idx_license_subject` (`license_type`, `subject`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='费用标准表';
 
+-- ============================================
 -- 13. 车型科目配置表
+-- ============================================
 CREATE TABLE IF NOT EXISTS `license_config` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `license_type` VARCHAR(10) NOT NULL COMMENT '车型: C1/C2/B1/N1...',
@@ -260,7 +271,9 @@ CREATE TABLE IF NOT EXISTS `license_config` (
     UNIQUE KEY `uk_type_subject` (`license_type`, `subject`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='车型科目配置表';
 
+-- ============================================
 -- 14. 考场信息表
+-- ============================================
 CREATE TABLE IF NOT EXISTS `exam_venue` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '考场ID',
     `name` VARCHAR(100) NOT NULL COMMENT '考场名称',
@@ -277,7 +290,9 @@ CREATE TABLE IF NOT EXISTS `exam_venue` (
     KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='考场信息表';
 
+-- ============================================
 -- 15. 特种车辆考试记录表
+-- ============================================
 CREATE TABLE IF NOT EXISTS `special_exam_record` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '记录ID',
     `student_id` INT UNSIGNED NOT NULL COMMENT '学员 user_id',
@@ -297,101 +312,3 @@ CREATE TABLE IF NOT EXISTS `special_exam_record` (
     KEY `idx_cert_no` (`cert_no`),
     KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='特种车辆考试记录表';
-
--- ============================================
--- 02 — 初始化基础数据
--- ============================================
-
--- 1. 用户表 (密码均为 admin123)
-INSERT IGNORE INTO `user` (`role`, `username`, `password`, `real_name`, `id_card`, `phone`, `address`, `license_type`, `status`) VALUES
-(3, 'admin', '$2a$10$G6M7kH3lGH.FYWI3pMTwuuGwaDRHDWfbnR6530PeTL6ymSV.p29zS', '系统管理员', '11010119900307663X', '13800000000', '重庆市南岸区', NULL, 1),
-(2, 'coach1', '$2a$10$G6M7kH3lGH.FYWI3pMTwuuGwaDRHDWfbnR6530PeTL6ymSV.p29zS', '张教练', '510101199505012345', '13812340001', '重庆市南岸区', 'C1', 1),
-(2, 'coach2', '$2a$10$G6M7kH3lGH.FYWI3pMTwuuGwaDRHDWfbnR6530PeTL6ymSV.p29zS', '李教练', '510101198805026789', '13812340002', '重庆市南岸区', 'C1,C2', 1),
-(1, 'student1', '$2a$10$G6M7kH3lGH.FYWI3pMTwuuGwaDRHDWfbnR6530PeTL6ymSV.p29zS', '王小明', '500101200001011234', '15912340001', '重庆市南岸区学府大道', 'C1', 1),
-(1, 'student2', '$2a$10$G6M7kH3lGH.FYWI3pMTwuuGwaDRHDWfbnR6530PeTL6ymSV.p29zS', '李芳', '500101200105023456', '15912340002', '重庆市南岸区学府大道', 'C2', 1);
-
--- 2. 教练扩展表
-INSERT IGNORE INTO `coach` (`user_id`, `rating`, `coach_years`, `vehicle_type`) VALUES
-(2, 4.8, 6, 'C1'),
-(3, 4.5, 10, 'C1,C2');
-
--- 3. 学员-教练关联
-INSERT IGNORE INTO `student_coach` (`student_id`, `coach_id`, `status`) VALUES
-(4, 1, 1),
-(5, 2, 1);
-
--- 4. 约课记录
-INSERT IGNORE INTO `appointment` (`student_id`, `coach_id`, `start_time`, `end_time`, `status`) VALUES
-(4, 1, '2026-05-20 09:00:00', '2026-05-20 10:00:00', 1),
-(5, 2, '2026-05-20 14:00:00', '2026-05-20 15:30:00', 0);
-
--- 5. 学时记录
-INSERT IGNORE INTO `training_record` (`student_id`, `coach_id`, `appointment_id`, `duration`, `subject_type`, `license_type`) VALUES
-(4, 1, 1, 1.0, 2, 'C1'),
-(5, 2, 2, 1.5, 2, 'C2');
-
--- 6. 考试场次
-INSERT IGNORE INTO `exam_session` (`subject`, `license_type`, `exam_date`, `start_time`, `location`, `total_quota`, `remaining_quota`) VALUES
-(1, 'C1', '2026-06-10', '09:00:00', '南岸区车管所', 100, 98),
-(2, 'C1', '2026-06-15', '08:30:00', '南坪科目二考场', 80, 80),
-(3, 'C1', '2026-06-20', '13:00:00', '八公里科目三考场', 60, 60);
-
--- 7. 系统配置
-INSERT IGNORE INTO `config` (`config_key`, `config_value`, `description`) VALUES
-('cancel_advance_hours', '24', '取消约课需提前小时数'),
-('max_no_show_count', '3', '爽约次数上限'),
-('no_show_punish_days', '7', '爽约后禁止约课天数'),
-('exam_pass_score', '90', '考试合格分数线（百分制）');
-
--- 8. 系统公告
-INSERT IGNORE INTO `notice` (`title`, `content`, `publish_time`) VALUES
-('系统上线通知', '驾校报名系统已正式上线，欢迎使用！如有问题请联系管理员。', NOW());
-
--- 9. 费用标准
-INSERT IGNORE INTO `fee_standard` (`license_type`, `subject`, `amount`, `description`) VALUES
-('C1', NULL, 3980.00, 'C1全包套餐（含补考费）'),
-('C2', NULL, 4280.00, 'C2全包套餐（含补考费）'),
-('C1', 2, 200.00, '科目二模拟训练费'),
-('C2', 2, 200.00, '科目二模拟训练费');
-
--- 10. 车型科目配置 — 小汽车类 (exam_mode=1)
-INSERT IGNORE INTO `license_config` (`license_type`, `subject`, `required_hours`, `exam_items`, `description`, `sort_order`, `exam_mode`, `coach_audit_required`, `cert_name`) VALUES
--- C1
-('C1', 1, 0,     NULL,                                                                               '科目一 道路交通安全法律、法规和相关知识', 1, 1, 1, NULL),
-('C1', 2, 16,    '倒车入库,侧方停车,坡道定点停车和起步,直角转弯,曲线行驶',                                                    '科目二 场地驾驶技能', 2, 1, 1, NULL),
-('C1', 3, 24,    '上车准备,起步,直线行驶,加减档操作,变更车道,靠边停车,直行通过路口,路口左转弯,路口右转弯,通过人行横道线,'
-                 '通过学校区域,通过公共汽车站,会车,超车,掉头,夜间行驶',                                                       '科目三 道路驾驶技能', 3, 1, 1, NULL),
-('C1', 4, 0,     NULL,                                                                               '科目四 安全文明驾驶常识', 4, 1, 1, NULL),
--- C2
-('C2', 1, 0,     NULL,                                                                               '科目一 道路交通安全法律、法规和相关知识', 1, 1, 1, NULL),
-('C2', 2, 12,    '倒车入库,侧方停车,直角转弯,曲线行驶',                                                                  '科目二 场地驾驶技能（无坡道起步）', 2, 1, 1, NULL),
-('C2', 3, 22,    '上车准备,起步,直线行驶,加减档操作,变更车道,靠边停车,直行通过路口,路口左转弯,路口右转弯,通过人行横道线,'
-                 '通过学校区域,通过公共汽车站,会车,超车,掉头',                                                             '科目三 道路驾驶技能（无夜间行驶）', 3, 1, 1, NULL),
-('C2', 4, 0,     NULL,                                                                               '科目四 安全文明驾驶常识', 4, 1, 1, NULL),
--- B1
-('B1', 1, 0,     NULL,                                                                               '科目一 道路交通安全法律、法规和相关知识', 1, 1, 1, NULL),
-('B1', 2, 20,    '倒车入库,侧方停车,坡道定点停车和起步,直角转弯,曲线行驶,通过单边桥,通过限宽门',                                          '科目二 场地驾驶技能', 2, 1, 1, NULL),
-('B1', 3, 30,    '上车准备,起步,直线行驶,加减档操作,变更车道,靠边停车,直行通过路口,路口左转弯,路口右转弯,通过人行横道线,'
-                 '通过学校区域,通过公共汽车站,会车,超车,掉头,夜间行驶,模拟山区公路',                                                    '科目三 道路驾驶技能', 3, 1, 1, NULL),
-('B1', 4, 0,     NULL,                                                                               '科目四 安全文明驾驶常识', 4, 1, 1, NULL);
-
--- 11. 车型科目配置 — 特种车辆 (exam_mode=2)
-INSERT IGNORE INTO `license_config` (`license_type`, `subject`, `required_hours`, `exam_items`, `description`, `sort_order`, `exam_mode`, `coach_audit_required`, `cert_name`) VALUES
-('N1', 1, 0,  '安全法规,叉车基础知识',              '叉车理论考试', 1, 2, 0, '叉车操作证'),
-('N1', 2, 20, '起步,货叉装卸,倒车入库,停放',         '叉车实操考试', 2, 2, 0, NULL),
-('N2', 1, 0,  '安全法规,挖掘机基础知识',              '挖掘机理论考试', 1, 2, 0, '挖掘机操作证'),
-('N2', 2, 25, '挖沟,平整,装车,上下板车,行走',        '挖掘机实操考试', 2, 2, 0, NULL),
-('N3', 1, 0,  '安全法规,压路机基础知识',              '压路机理论考试', 1, 2, 0, '压路机操作证'),
-('N3', 2, 20, '起步,压实作业,转向,掉头,停放',        '压路机实操考试', 2, 2, 0, NULL);
-
--- 12. 考场信息
-INSERT IGNORE INTO `exam_venue` (`name`, `address`, `capacity`, `status`) VALUES
-('南岸区车管所', '南岸区', 100, 1),
-('南坪科目二考场', '南坪', 80, 1),
-('八公里科目三考场', '八公里', 60, 1);
-
--- 考场ID回填到考试场次
-UPDATE `exam_session` e
-JOIN `exam_venue` v ON e.`location` = v.`name`
-SET e.`venue_id` = v.`id`
-WHERE e.`venue_id` IS NULL;

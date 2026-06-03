@@ -16,10 +16,10 @@ public class LicenseConfig {
     @TableId(type = IdType.AUTO)
     private Integer id;
 
-    /** 车型: C1/C2/B1... */
+    /** 车型: C1/C2/B1/N1... */
     private String licenseType;
 
-    /** 科目: 1-4 */
+    /** 科目: 1-4(小汽车), 1=理论,2=实操(特种车) */
     private Integer subject;
 
     /** 要求学时 */
@@ -33,6 +33,15 @@ public class LicenseConfig {
 
     /** 排序 */
     private Integer sortOrder;
+
+    /** 考试模式: 1-小汽车(科一~科四), 2-特种车辆(理论+实操) */
+    private Integer examMode;
+
+    /** 报名考试是否需要教练审核: 1-需要, 0-不需要 */
+    private Integer coachAuditRequired;
+
+    /** 获证名称(仅特种车辆使用, 如"叉车操作证") */
+    private String certName;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;

@@ -7,6 +7,7 @@ import com.homework.driveman.entity.ExamSession;
 import com.homework.driveman.entity.LicenseConfig;
 import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
+import com.homework.driveman.mapper.ConfigMapper;
 import com.homework.driveman.mapper.LicenseConfigMapper;
 import com.homework.driveman.mapper.TrainingRecordMapper;
 import com.homework.driveman.service.IExamRegistrationService;
@@ -54,6 +55,20 @@ public class ExamRegistrationController {
 
     @Autowired
     private TrainingRecordMapper trainingRecordMapper;
+
+    @Autowired
+    private ConfigMapper configMapper;
+
+    /** 从 config 表读取合格分数线，默认 90 */
+    private int getPassScore() {
+        String val = configMapper.getConfigValue("exam_pass_score");
+        if (val == null) return 90;
+        try {
+            return Integer.parseInt(val);
+        } catch (NumberFormatException e) {
+            return 90;
+        }
+    }
 
     @RequireRole(1)
     @Operation(summary = "学员报名考试")
@@ -149,7 +164,7 @@ public class ExamRegistrationController {
 
     @RequireRole(3)
     @Operation(summary = "录入考试成绩",
-            description = "score 0-100，≥90 为合格")
+            description = "score 0-100，合格分数线从系统配置读取（默认 90 分）")
     @PutMapping("/{id}/score")
     public JsonResult<Void> enterScore(@PathVariable Integer id,
                                        @RequestParam Integer score) {
@@ -162,10 +177,11 @@ public class ExamRegistrationController {
             throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "考试报名记录不存在");
         }
 
+        int passScore = getPassScore();
         registration.setScore(score);
-        registration.setPassStatus(score >= 90 ? 1 : 0);
+        registration.setPassStatus(score >= passScore ? 1 : 0);
         registration.setStatus(3); // 已考试
-        if (score < 90) {
+        if (score < passScore) {
             registration.setRetakeCount(registration.getRetakeCount() + 1);
         }
         examRegistrationService.updateById(registration);

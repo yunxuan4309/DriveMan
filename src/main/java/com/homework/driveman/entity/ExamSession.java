@@ -33,6 +33,9 @@ public class ExamSession {
     /** 考试地点 */
     private String location;
 
+    /** 关联考场ID */
+    private Integer venueId;
+
     /** 总名额 */
     private Integer totalQuota;
 

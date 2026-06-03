@@ -52,6 +52,12 @@ public class LoginController {
             throw new ServiceException(ServiceCode.ERROR_UNAUTHORIZED, "用户名或密码错误");
         }
 
+        // 校验审核状态
+        if (user.getStatus() != 1) {
+            String msg = user.getStatus() == 0 ? "您还未通过审核" : "您的账号审核不通过";
+            throw new ServiceException(ServiceCode.ERROR_UNAUTHORIZED_DISABLED, msg);
+        }
+
         // 签发 Token
         CurrentUser currentUser = new CurrentUser(user.getUserId(), user.getUsername(), user.getRole());
         String token = jwtUtils.generateToken(currentUser);

@@ -20,9 +20,9 @@ public interface ExamRegistrationMapper extends BaseMapper<ExamRegistration> {
     List<Integer> findExamStudentIds(@Param("coachId") Integer coachId);
 
     /**
-     * 获取某学员已合格的科目集合（成绩 >= 90 视为合格）
+     * 获取某学员已合格的科目集合（pass_status = 1 视为合格）
      */
     @Select("SELECT DISTINCT subject FROM exam_registration " +
-            "WHERE student_id = #{studentId} AND score >= 90 AND is_deleted = 0")
+            "WHERE student_id = #{studentId} AND pass_status = 1 AND is_deleted = 0")
     Set<Integer> findPassedSubjectsByStudent(@Param("studentId") Integer studentId);
 }
