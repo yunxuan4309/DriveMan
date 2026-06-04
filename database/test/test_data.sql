@@ -324,7 +324,8 @@ INSERT IGNORE INTO `config` (`config_key`, `config_value`, `description`) VALUES
 ('coach_max_students', '15', '每位教练最多绑定学员数'),
 ('allow_same_day_cancel', 'false', '是否允许当天取消约课'),
 ('business_hours_start', '08:00', '营业开始时间'),
-('business_hours_end', '18:00', '营业结束时间');
+('business_hours_end', '18:00', '营业结束时间'),
+('retake_training_fee', '300.00', '二次培训费默认金额(元)，非全包学员挂科后每次培训的费用');
 
 -- ============================================
 -- 数据校验：打印各表数据量

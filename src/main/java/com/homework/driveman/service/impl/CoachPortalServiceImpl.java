@@ -191,6 +191,7 @@ public class CoachPortalServiceImpl implements ICoachPortalService {
             map.put("score", reg.getScore());
             map.put("passStatus", reg.getPassStatus());
             map.put("retakeCount", reg.getRetakeCount());
+            map.put("isRetake", reg.getIsRetake());
             map.put("applyTime", reg.getApplyTime());
             map.put("auditTime", reg.getAuditTime());
 

@@ -154,6 +154,7 @@ public class PaymentRecordServiceImpl implements IPaymentRecordService {
                 case "registration_fee" -> "报名费";
                 case "exam_fee" -> "考试费";
                 case "familiarization_fee" -> "合场费";
+                case "training_fee" -> "二次培训费";
                 default -> bizType;
             };
             bizPieData.add(Map.of("name", label, "value", row.get("total")));

@@ -60,7 +60,8 @@ INSERT IGNORE INTO `config` (`config_key`, `config_value`, `description`) VALUES
 ('cancel_advance_hours', '24', '取消约课需提前小时数'),
 ('max_no_show_count', '3', '爽约次数上限'),
 ('no_show_punish_days', '7', '爽约后禁止约课天数'),
-('exam_pass_score', '90', '考试合格分数线（百分制）');
+('exam_pass_score', '90', '考试合格分数线（百分制）'),
+('retake_training_fee', '300.00', '二次培训费默认金额(元)，非全包学员挂科后每次培训的费用');
 
 -- ============================================
 -- 8. 系统公告

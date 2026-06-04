@@ -324,6 +324,46 @@ public class FileController {
 
     // ==================== 删除 ====================
 
+    @Operation(summary = "预览文件（返回文件流，支持图片和PDF）",
+            description = "根据文件类型自动设置Content-Type，图片和PDF可直接在浏览器中预览")
+    @GetMapping("/{id}/preview")
+    public ResponseEntity<Resource> preview(@PathVariable Integer id) {
+        File file = fileService.getById(id);
+        if (file == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        try {
+            Path filePath = Path.of(fileService.getAbsolutePath(file));
+            Resource resource = new UrlResource(filePath.toUri());
+            if (!resource.exists()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // 根据文件扩展名设置 Content-Type
+            String fileName = file.getFileName();
+            MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
+            if (fileName != null) {
+                String ext = fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
+                switch (ext) {
+                    case "jpg", "jpeg" -> mediaType = MediaType.IMAGE_JPEG;
+                    case "png" -> mediaType = MediaType.IMAGE_PNG;
+                    case "gif" -> mediaType = MediaType.IMAGE_GIF;
+                    case "bmp" -> mediaType = MediaType.valueOf("image/bmp");
+                    case "webp" -> mediaType = MediaType.valueOf("image/webp");
+                    case "pdf" -> mediaType = MediaType.APPLICATION_PDF;
+                }
+            }
+
+            return ResponseEntity.ok()
+                    .contentType(mediaType)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
+                    .body(resource);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     @RequireRole(3)
     @Operation(summary = "删除文件记录（逻辑删除，磁盘文件保留）")
     @DeleteMapping("/{id}")
