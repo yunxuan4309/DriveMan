@@ -28,13 +28,15 @@ DriveMan/
 │   ├── init_script.sql              # 【入口】一键全量建库（合并 full/ 下三个文件）
 │   ├── full/                        # 完整建库（按编号顺序执行）
 │   │   ├── 00_create_database.sql   #   创建数据库
-│   │   ├── 01_schema.sql            #   全部 16 张表的建表语句
+│   │   ├── 01_schema.sql            #   全部 18 张表的建表语句
 │   │   └── 02_init_data.sql         #   初始化基础数据
 │   ├── upgrade/                     # 增量升级（按需执行，不丢数据）
 │   │   ├── add_constraints.sql      #   外键约束（建议开发后期启用）
 │   │   ├── upgrade_license_type.sql #   小汽车车型升级
 │   │   ├── upgrade_basic_data.sql   #   基础数据优化（车型模式+考场+特种车）
 │   │   ├── upgrade_version_lock.sql #   乐观锁版本号列
+│   │   ├── upgrade_payment_record.sql #   支付记录表
+│   │   ├── upgrade_familiarization_record.sql # 合场记录表
 │   │   └── upgrade_coach_vehicle_application.sql # 教练准教车型变更申请表
 │   └── test/
 │       └── test_data.sql            # 测试数据补充
@@ -65,7 +67,7 @@ DriveMan/
 │   │   ├── CoachWorkloadVO.java             #   教练工作量 VO
 │   │   └── StudentInfoVO.java               #   学员信息 VO
 │   │
-│   ├── controller/                           # REST 控制器（21 个，20 个活跃，1 个已禁用）
+│   ├── controller/                           # REST 控制器（23 个，22 个活跃，1 个已禁用）
 │   │   ├── LoginController.java              #   认证登录
 │   │   ├── UserController.java               #   用户管理
 │   │   ├── CoachController.java              #   教练管理
@@ -85,9 +87,11 @@ DriveMan/
 │   │   ├── ExamVenueController.java          #   考场管理
 │   │   ├── CoachVehicleApplicationController.java # 教练准教车型变更审核
 │   │   ├── ProgressController.java           #   学习进度查询
-│   │   └── StatisticsController.java         #   统计报表
+│   │   ├── StatisticsController.java         #   统计报表
+│   │   ├── PaymentController.java            #   支付管理
+│   │   ├── FamiliarizationController.java    #   合场管理
 │   │
-│   ├── entity/                               # 数据实体（15 个，含 ExamVenue + SpecialExamRecord + CoachVehicleApplication）
+│   ├── entity/                               # 数据实体（17 个，含 ExamVenue + SpecialExamRecord + CoachVehicleApplication + PaymentRecord + FamiliarizationRecord）
 │   │   ├── User.java                         #   用户表
 │   │   ├── Coach.java                        #   教练扩展表
 │   │   ├── StudentCoach.java                 #   学员-教练关联表
@@ -102,9 +106,11 @@ DriveMan/
 │   │   ├── File.java                         #   文件表（含biz_type/biz_id/file_size/mime_type）
 │   │   ├── ExamVenue.java                    #   考场表
 │   │   ├── SpecialExamRecord.java            #   特种车考试记录表
-│   │   └── CoachVehicleApplication.java      #   教练准教车型变更申请表
+│   │   ├── CoachVehicleApplication.java      #   教练准教车型变更申请表
+│   │   ├── PaymentRecord.java                #   支付记录表
+│   │   ├── FamiliarizationRecord.java        #   合场记录表
 │   │
-│   ├── mapper/                               # Mapper 接口（16 个，均继承 BaseMapper）
+│   ├── mapper/                               # Mapper 接口（18 个，均继承 BaseMapper）
 │   │   ├── UserMapper.java
 │   │   ├── CoachMapper.java
 │   │   ├── StudentCoachMapper.java
@@ -120,6 +126,8 @@ DriveMan/
 │   │   ├── ExamVenueMapper.java
 │   │   ├── SpecialExamRecordMapper.java
 │   │   ├── ConfigMapper.java
+│   │   ├── PaymentRecordMapper.java
+│   │   ├── FamiliarizationRecordMapper.java
 │   │   └── CoachVehicleApplicationMapper.java
 │   │
 │   ├── service/                           # 业务层
@@ -139,6 +147,8 @@ DriveMan/
 │   │   ├── IUserService.java
 │   │   ├── IExamVenueService.java              #   考场管理
 │   │   ├── ISpecialExamRecordService.java        #   特种车辆考试记录
+│   │   ├── IPaymentRecordService.java            #   支付管理
+│   │   ├── IFamiliarizationRecordService.java    #   合场管理
 │   │   └── ICoachVehicleApplicationService.java  #   教练准教车型变更
 │   │   │
 │   │   └── impl/
@@ -155,6 +165,8 @@ DriveMan/
 │   │       ├── ProgressServiceImpl.java
 │   │       ├── StatisticsServiceImpl.java
 │   │       ├── TrainingRecordServiceImpl.java
+│   │       ├── PaymentRecordServiceImpl.java
+│   │       ├── FamiliarizationRecordServiceImpl.java
 │   │       ├── CoachVehicleApplicationServiceImpl.java
 │   │       └── UserServiceImpl.java
 │   │
@@ -187,6 +199,8 @@ DriveMan/
 ├── 考试报名审核接口文档.md
 ├── 考试场次安排接口文档.md
 ├── 教练准教车型变更申请接口文档.md
+├── 支付管理接口文档.md
+├── 合场管理接口文档.md
 ├── 基础数据管理接口文档.md
 ├── 基础数据管理优化方案.md
 ├── 业务逻辑分析.md
@@ -200,7 +214,7 @@ DriveMan/
 - **登录** `POST /login` — 用户名/密码登录，返回 JWT Token（7 天有效）
 - **拦截器** — `JwtInterceptor` 拦截除公开路径外的所有请求，校验 Token
 - **角色注解** — `@RequireRole({1,3})` 方法级权限控制（1=学员, 2=教练, 3=管理员）
-- ✅ `@RequireRole` 已应用到 18 个 Controller 共 62 处敏感接口上
+- ✅ `@RequireRole` 已应用到 19 个 Controller 共 89 处敏感接口上
 
 ### 2. 用户管理
 - 学员/教练/管理员的 CRUD，用户状态审核流程（待审核 → 通过/不通过）
@@ -246,11 +260,26 @@ DriveMan/
 - 数据驱动，按 license_config 表配置动态展示各科进度
 
 ### 11. 统计报表
-- 报名趋势统计、考试合格率统计、教练工作量统计
+- 报名趋势统计（近30天折线图）
+- 各科目月度考试通过率趋势（多线折线图）
+- 教练效能排名（柱状图，含评分/带教学员数/通过率明细）
+- 收入看板（近12月收入趋势柱状图 + 当月收入来源饼图 + 收支汇总）
 
 ### 12. 文件管理
 - 本地磁盘存储，按类型分子目录（id_card_front, id_card_back, physical_exam 等）
 - 文件上传（5MB 限制）、下载、静态资源访问（`/uploads/**`）
+
+### 13. 支付管理
+- 报名/考试报名审核通过时自动生成待支付账单
+- 学员端查看我的账单 + 模拟支付
+- 管理员端欠费清单 + 确认支付 + 退款 + 手动创建记录
+- 收入看板（月度趋势、来源分布、汇总统计）
+
+### 14. 合场管理
+- 学员申请合场（教练车需绑定教练陪同 / 考试车由考场提供陪练）
+- 系统自动按 fee_standard 定价并生成支付账单
+- 管理员安排时间、标记完成、取消合场
+- 两种用车模式分别定价
 
 ## API 概览
 
@@ -274,6 +303,8 @@ DriveMan/
 | 通知公告 | `/notices` | 全部（登录） |
 | 学习进度 | `/progress` | 全部（登录） |
 | 统计报表 | `/statistics` | 管理员 |
+| 支付管理 | `/payment-records` | 学员/管理员 |
+| 合场管理 | `/familiarizations` | 学员/管理员 |
 | 文件 | `/files` | 全部（登录），删除限管理员 |
 | 特种车辆考试 | `/special-exam-records` | 管理员 |
 | 教练准教车型变更 | `/coach-portal/vehicle-applications` | 教练 |
@@ -335,10 +366,10 @@ mvn spring-boot:run
 
 ### 已完成
 - [x] Spring Boot + MyBatis-Plus 框架搭建
-- [x] 16 张数据库表结构设计 + 初始化数据 + 测试数据
+- [x] 18 张数据库表结构设计 + 初始化数据 + 测试数据
 - [x] 三层架构（Controller/Service/Mapper）代码生成
 - [x] JWT 登录认证 + Token 校验拦截器
-- [x] `@RequireRole` 角色权限注解（已应用到 17 个 Controller 共 57 处敏感接口）
+- [x] `@RequireRole` 角色权限注解（已应用到 19 个 Controller 共 89 处敏感接口）
 - [x] 用户 CRUD 管理 + 学员管理独立控制器
 - [x] 教练 CRUD + 自动推荐 + 分配 + 解绑
 - [x] 学员申请教练 + 管理员审核
@@ -355,12 +386,12 @@ mvn spring-boot:run
 - [x] 驾照车型配置 CRUD（Controller + 实体完全同步）
 - [x] 通知公告管理
 - [x] 学习进度查询（小汽车 4 科模式）
-- [x] 统计报表（报名趋势/合格率/教练工作量）
+- [x] 统计报表重构（报名趋势/分科通过率趋势/教练效能排名/收入看板）
 - [x] 全局异常处理 + 统一响应格式
 - [x] 全局跨域配置
 - [x] Knife4j 接口文档
 - [x] 通用配置（分页、自动填充、逻辑删除、Redis 模板、Validator）
-- [x] 接口文档按模块拆分（12 份独立文档）
+- [x] 接口文档按模块拆分（14 份独立文档）
 - [x] 数据库目录拆分（full/ + upgrade/ + test/）
 - [x] 增量升级脚本（basic_data / version_lock）
 - [x] MyBatis-Plus 乐观锁（`@Version` + `OptimisticLockerInnerInterceptor`）
@@ -373,6 +404,12 @@ mvn spring-boot:run
 - [x] 教练准教车型变更申请 + 管理员审核流程（含车型合法性校验）
 - [x] `init_script.sql` 与 `01_schema.sql` 对齐（补全 version 列）
 - [x] 考试场次安排接口文档 + 教练准教车型变更申请接口文档
+- [x] 支付管理系统（payment_record 表 → 实体 → Mapper → Service → Controller）
+- [x] 合场功能（familiarization_record 表 → 实体 → Mapper → Service → Controller）
+- [x] 账单自动生成（报名审核/考试报名审核通过时自动生成待支付账单）
+- [x] 收入看板（月度趋势 / 来源分布饼图 / 收支汇总统计）
+- [x] 欠费清单（含学员姓名/电话/车型信息）
+- [x] 支付管理 + 合场管理接口文档（给前端对接使用）
 
 ### 待完善
 
@@ -382,7 +419,7 @@ mvn spring-boot:run
 - ExamVenue、SpecialExamRecord、ConfigMapper 均已实现
 
 **P1 — 功能待完善**
-- [ ] 数据库 16 张表 + 对应的 Java 实体/Mapper/Service/Controller 已全部对齐（待补充 Config 实体类，目前仅通过 ConfigMapper 原生 SQL 访问）
+- [ ] 数据库 18 张表 + 对应的 Java 实体/Mapper/Service/Controller 已全部对齐（待补充 Config 实体类，目前仅通过 ConfigMapper 原生 SQL 访问）
 
 **P2 — 业务逻辑待优化**
 - [ ] Token 刷新接口（当前 Token 过期后需重新登录）
@@ -401,6 +438,8 @@ mvn spring-boot:run
 | 特种车辆进度适配 | ProgressServiceImpl 需根据 examMode 分支处理 |
 | Config 实体类 | 表已存在，Java 实体待创建（目前 ConfigMapper 走原生 SQL） |
 | 教练准教车型变更 | 已实现：教练提交 → 管理员审核 → 自动更新 coach.vehicle_type |
+| 支付管理 | 已实现：payment_record 表 → 欠费管理 / 收入看板 / 账单自动生成 |
+| 合场管理 | 已实现：学员申请 → 支付 → 管理员安排时间 / 完成 / 取消 |
 
 ## 设计约定
 

@@ -206,7 +206,9 @@ CREATE TABLE `config` (
 CREATE TABLE `coach_application` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `student_id` INT UNSIGNED NOT NULL COMMENT '学员user_id',
-    `coach_id` INT UNSIGNED NOT NULL COMMENT '申请的教练coach_id',
+    `coach_id` INT UNSIGNED NOT NULL COMMENT '目标教练coach_id（学员申请/教练移交的接收教练）',
+    `source_coach_id` INT UNSIGNED DEFAULT NULL COMMENT '发起移交的教练coach_id，NULL表示学员自主申请',
+    `transfer_reason` VARCHAR(200) DEFAULT NULL COMMENT '教练移交原因（学员主动申请时为NULL）',
     `status` TINYINT NOT NULL DEFAULT 0 COMMENT '0-待审核,1-通过,2-拒绝',
     `apply_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `audit_time` DATETIME DEFAULT NULL,
@@ -217,8 +219,9 @@ CREATE TABLE `coach_application` (
     PRIMARY KEY (`id`),
     KEY `idx_student` (`student_id`),
     KEY `idx_coach` (`coach_id`),
+    KEY `idx_source_coach` (`source_coach_id`),
     KEY `idx_status` (`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='教练选择申请表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='教练选择/移交申请表';
 
 -- 11. 系统公告表
 CREATE TABLE IF NOT EXISTS `notice` (

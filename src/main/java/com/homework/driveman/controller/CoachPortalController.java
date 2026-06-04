@@ -3,10 +3,12 @@ package com.homework.driveman.controller;
 import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.Appointment;
 import com.homework.driveman.entity.Coach;
+import com.homework.driveman.entity.CoachApplication;
 import com.homework.driveman.entity.StudentCoach;
 import com.homework.driveman.entity.TrainingRecord;
 import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
+import com.homework.driveman.mapper.CoachApplicationMapper;
 import com.homework.driveman.mapper.CoachMapper;
 import com.homework.driveman.mapper.StudentCoachMapper;
 import com.homework.driveman.mapper.TrainingRecordMapper;
@@ -24,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -60,6 +63,9 @@ public class CoachPortalController {
 
     @Autowired
     private ICoachVehicleApplicationService coachVehicleApplicationService;
+
+    @Autowired
+    private CoachApplicationMapper coachApplicationMapper;
 
     /**
      * 从当前登录用户中提取 coachId（coach 表主键）
@@ -340,5 +346,79 @@ public class CoachPortalController {
 
         List<Appointment> list = appointmentService.list(wrapper);
         return JsonResult.ok(list);
+    }
+
+    // ==================== 10. 教练申请移交学员（含审核流程） ====================
+
+    @RequireRole(2)
+    @Operation(summary = "教练申请移交学员",
+            description = "教练因故无法继续带教学员，发起将某学员移交给另一位指定教练的申请，由管理员审核")
+    @PostMapping("/student-transfers")
+    public JsonResult<Void> submitStudentTransfer(
+            HttpServletRequest request,
+            @RequestParam Integer studentId,
+            @RequestParam Integer targetCoachId,
+            @RequestParam String reason) {
+        Integer sourceCoachId = resolveCoachId(request);
+
+        // 校验该学员是否是该教练名下的绑定学员
+        Long bindingCount = studentCoachMapper.selectCount(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<StudentCoach>()
+                        .eq(StudentCoach::getStudentId, studentId)
+                        .eq(StudentCoach::getCoachId, sourceCoachId)
+                        .eq(StudentCoach::getStatus, 1));
+        if (bindingCount == 0) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "该学员不是您名下的学员");
+        }
+
+        // 校验是否已有待审核的移交申请
+        Long pendingCount = coachApplicationMapper.selectCount(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CoachApplication>()
+                        .eq(CoachApplication::getStudentId, studentId)
+                        .eq(CoachApplication::getSourceCoachId, sourceCoachId)
+                        .eq(CoachApplication::getStatus, 0));
+        if (pendingCount > 0) {
+            throw new ServiceException(ServiceCode.ERROR_CONFLICT, "该学员的移交申请已提交，请等待管理员处理");
+        }
+
+        CoachApplication application = new CoachApplication();
+        application.setStudentId(studentId);
+        application.setCoachId(targetCoachId);
+        application.setSourceCoachId(sourceCoachId);
+        application.setTransferReason(reason);
+        application.setStatus(0);
+        application.setApplyTime(LocalDateTime.now());
+        coachApplicationMapper.insert(application);
+        return JsonResult.ok();
+    }
+
+    @RequireRole(2)
+    @Operation(summary = "查看本人的学员移交申请记录",
+            description = "返回当前教练发起的所有学员移交申请历史")
+    @GetMapping("/student-transfers")
+    public JsonResult<List<Map<String, Object>>> listStudentTransfers(HttpServletRequest request) {
+        Integer coachId = resolveCoachId(request);
+        List<CoachApplication> list = coachApplicationMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CoachApplication>()
+                        .eq(CoachApplication::getSourceCoachId, coachId)
+                        .orderByDesc(CoachApplication::getApplyTime));
+
+        List<Map<String, Object>> result = list.stream().map(app -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", app.getId());
+            map.put("studentId", app.getStudentId());
+            map.put("targetCoachId", app.getCoachId());
+            map.put("transferReason", app.getTransferReason());
+            map.put("status", app.getStatus());
+            map.put("auditReason", app.getAuditReason());
+            map.put("applyTime", app.getApplyTime());
+            map.put("auditTime", app.getAuditTime());
+
+            User student = userService.getById(app.getStudentId());
+            map.put("studentName", student != null ? student.getRealName() : "未知");
+
+            return map;
+        }).collect(Collectors.toList());
+        return JsonResult.ok(result);
     }
 }

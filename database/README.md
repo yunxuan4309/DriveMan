@@ -12,7 +12,8 @@ database/
 ├── upgrade/                        # 增量升级（对已有数据库执行升级）
 │   ├── add_constraints.sql         # 外键约束（建议开发后期再启用）
 │   ├── upgrade_license_type.sql    # 小汽车车型多车型支持升级
-│   └── upgrade_basic_data.sql      # 基础数据优化（exam_mode、考场、特种车辆）
+│   ├── upgrade_basic_data.sql      # 基础数据优化（exam_mode、考场、特种车辆）
+│   └── upgrade_coach_application.sql # coach_application 表扩展——支持教练主动移交学员
 └── test/
     └── test_data.sql               # 测试数据补充
 ```
@@ -42,6 +43,7 @@ mysql -u root -proot < database/init_script.sql
 ```bash
 mysql -u root -proot driveman < database/upgrade/upgrade_license_type.sql
 mysql -u root -proot driveman < database/upgrade/upgrade_basic_data.sql
+mysql -u root -proot driveman < database/upgrade/upgrade_coach_application.sql
 mysql -u root -proot driveman < database/upgrade/add_constraints.sql
 ```
 

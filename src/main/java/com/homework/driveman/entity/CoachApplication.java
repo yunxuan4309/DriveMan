@@ -22,6 +22,12 @@ public class CoachApplication {
     /** 申请的教练 coach_id */
     private Integer coachId;
 
+    /** 发起移交的教练 coach_id（NULL 表示学员自主申请，非NULL表示教练发起移交） */
+    private Integer sourceCoachId;
+
+    /** 教练移交原因（学员主动申请时为 NULL） */
+    private String transferReason;
+
     /** 状态: 0-待审核, 1-通过, 2-拒绝 */
     private Integer status;
 

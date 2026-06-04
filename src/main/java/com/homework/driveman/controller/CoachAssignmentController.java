@@ -5,6 +5,7 @@ import com.homework.driveman.entity.Coach;
 import com.homework.driveman.entity.StudentCoach;
 import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
+import com.homework.driveman.mapper.CoachMapper;
 import com.homework.driveman.mapper.StudentCoachMapper;
 import com.homework.driveman.mapper.UserMapper;
 import com.homework.driveman.service.ICoachService;
@@ -39,6 +40,10 @@ public class CoachAssignmentController {
     @Autowired
     private UserMapper userMapper;
 
+    @Autowired
+    private CoachMapper coachMapper;
+
+    @RequireRole({1,3})
     @Operation(summary = "自动推荐教练",
             description = "根据学员报考车型匹配准教车型，按评分降序返回前 N 条")
     @GetMapping("/recommend")
@@ -105,6 +110,46 @@ public class CoachAssignmentController {
             map.put("coachName", coachUser != null ? coachUser.getRealName() : "未知");
             return map;
         }).collect(Collectors.toList());
+        return JsonResult.ok(result);
+    }
+
+    @RequireRole(3)
+    @Operation(summary = "查询指定教练名下的学员",
+            description = "管理员按教练查看名下所有正常绑定的学员列表")
+    @GetMapping("/coach/{coachId}/students")
+    public JsonResult<Map<String, Object>> listStudentsByCoach(@PathVariable Integer coachId) {
+        Coach coach = coachMapper.selectById(coachId);
+        if (coach == null) {
+            throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "教练不存在");
+        }
+        User coachUser = userMapper.selectById(coach.getUserId());
+
+        List<StudentCoach> bindings = studentCoachMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<StudentCoach>()
+                        .eq(StudentCoach::getCoachId, coachId)
+                        .eq(StudentCoach::getStatus, 1));
+
+        List<Map<String, Object>> students = bindings.stream().map(sc -> {
+            Map<String, Object> item = new HashMap<>();
+            item.put("bindId", sc.getId());
+            item.put("studentId", sc.getStudentId());
+            item.put("bindTime", sc.getBindTime());
+
+            User student = userMapper.selectById(sc.getStudentId());
+            if (student != null) {
+                item.put("realName", student.getRealName());
+                item.put("phone", student.getPhone());
+                item.put("licenseType", student.getLicenseType());
+                item.put("idCard", student.getIdCard());
+            }
+            return item;
+        }).collect(Collectors.toList());
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("coachId", coachId);
+        result.put("coachName", coachUser != null ? coachUser.getRealName() : "未知");
+        result.put("studentCount", students.size());
+        result.put("students", students);
         return JsonResult.ok(result);
     }
 
