@@ -29,4 +29,9 @@ public interface IPhysicalExamService extends IService<PhysicalExam> {
      * 上传体检结果
      */
     void uploadResult(Integer id, Integer fileId, Integer result);
+
+    /**
+     * 教练查看名下学员的体检申请
+     */
+    List<PhysicalExam> listByCoach(Integer userId);
 }

@@ -2,9 +2,11 @@ package com.homework.driveman.controller;
 
 import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.PhysicalExam;
+import com.homework.driveman.exception.ServiceException;
 import com.homework.driveman.service.IPhysicalExamService;
 import com.homework.driveman.utils.CurrentUser;
 import com.homework.driveman.web.JsonResult;
+import com.homework.driveman.web.ServiceCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * 体检申请控制器 — 学员端提交体检申请，管理员审核
+ * 体检申请控制器 — 学员端提交体检申请,管理员审核
  */
 @Tag(name = "体检申请")
 @RestController
@@ -49,7 +51,24 @@ public class PhysicalExamController {
     @GetMapping("/my")
     public JsonResult<List<PhysicalExam>> listMyExams(HttpServletRequest request) {
         CurrentUser user = getCurrentUser(request);
+        if (user == null || user.getUserId() == null) {
+            throw new ServiceException(ServiceCode.ERROR_UNAUTHORIZED, "用户未登录");
+        }
         List<PhysicalExam> list = physicalExamService.listByStudent(user.getUserId());
+        return JsonResult.ok(list);
+    }
+
+    // ==================== 教练端接口 ====================
+
+    @RequireRole(2)
+    @Operation(summary = "查看名下学员体检申请", description = "教练查看自己管理的学员的体检申请记录及结果")
+    @GetMapping("/my-students")
+    public JsonResult<List<PhysicalExam>> listMyStudentsExams(HttpServletRequest request) {
+        CurrentUser user = getCurrentUser(request);
+        if (user == null || user.getUserId() == null) {
+            throw new ServiceException(ServiceCode.ERROR_UNAUTHORIZED, "用户未登录");
+        }
+        List<PhysicalExam> list = physicalExamService.listByCoach(user.getUserId());
         return JsonResult.ok(list);
     }
 
