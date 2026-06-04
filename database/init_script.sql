@@ -158,6 +158,7 @@ CREATE TABLE `exam_registration` (
     `score` TINYINT UNSIGNED DEFAULT NULL COMMENT '成绩(0-100)',
     `pass_status` TINYINT DEFAULT NULL COMMENT '是否合格: 0-不合格,1-合格',
     `retake_count` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '补考次数',
+    `is_retake` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否补考: 0-首次考试, 1-补考（仅标识记录，不影响计费；二次培训费走 retake_training_record）',
     `apply_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '报名时间',
     `audit_time` DATETIME DEFAULT NULL COMMENT '审核时间',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -169,6 +170,33 @@ CREATE TABLE `exam_registration` (
     KEY `idx_subject_status` (`subject`, `status`),
     KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='考试报名表';
+
+-- 7b. 二次培训记录表
+-- 学员挂科后申请二次培训（补考培训）的流程记录。
+-- 全包学员免缴费（is_free=1），非全包学员需缴纳培训费。
+CREATE TABLE IF NOT EXISTS `retake_training_record` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `student_id` INT UNSIGNED NOT NULL COMMENT '学员user_id',
+    `coach_id` INT UNSIGNED DEFAULT NULL COMMENT '教练user_id（培训指派的教练）',
+    `exam_registration_id` INT UNSIGNED NOT NULL COMMENT '关联的挂科考试报名ID',
+    `subject` TINYINT NOT NULL COMMENT '需培训的科目: 1-4',
+    `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态: 0-待审核, 1-培训中, 2-已完成, 3-已取消',
+    `is_free` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否免费: 1-全包学员免缴费, 0-需缴费',
+    `amount` DECIMAL(8,2) DEFAULT NULL COMMENT '培训费金额(元)，非全包学员需缴纳',
+    `pay_status` TINYINT NOT NULL DEFAULT 0 COMMENT '缴费状态: 0-无需缴费, 1-待缴费, 2-已缴费',
+    `apply_reason` VARCHAR(200) DEFAULT NULL COMMENT '申请说明',
+    `audit_time` DATETIME DEFAULT NULL COMMENT '审核时间',
+    `complete_time` DATETIME DEFAULT NULL COMMENT '培训完成时间',
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
+    `is_deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '软删除: 0-未删除,1-已删除',
+    PRIMARY KEY (`id`),
+    KEY `idx_student` (`student_id`),
+    KEY `idx_coach` (`coach_id`),
+    KEY `idx_exam_reg` (`exam_registration_id`),
+    KEY `idx_status` (`status`),
+    KEY `idx_is_deleted` (`is_deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='二次培训记录表';
 
 -- 8. 文件表
 CREATE TABLE `file` (
@@ -423,7 +451,8 @@ INSERT IGNORE INTO `config` (`config_key`, `config_value`, `description`) VALUES
 ('cancel_advance_hours', '24', '取消约课需提前小时数'),
 ('max_no_show_count', '3', '爽约次数上限'),
 ('no_show_punish_days', '7', '爽约后禁止约课天数'),
-('exam_pass_score', '90', '考试合格分数线（百分制）');
+('exam_pass_score', '90', '考试合格分数线（百分制）'),
+('retake_training_fee', '300.00', '二次培训费默认金额(元)，非全包学员挂科后每次培训的费用');
 
 -- 8. 系统公告
 INSERT IGNORE INTO `notice` (`title`, `content`, `publish_time`) VALUES

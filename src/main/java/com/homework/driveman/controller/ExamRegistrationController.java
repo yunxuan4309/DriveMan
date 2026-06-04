@@ -126,12 +126,20 @@ public class ExamRegistrationController {
             }
         }
 
+        // ③ 检测是否为补考：该学员同一科目是否有不合格记录
+        boolean isRetake = examRegistrationService.lambdaQuery()
+                .eq(ExamRegistration::getStudentId, studentId)
+                .eq(ExamRegistration::getSubject, session.getSubject())
+                .eq(ExamRegistration::getPassStatus, 0)
+                .count() > 0;
+
         ExamRegistration registration = new ExamRegistration();
         registration.setStudentId(studentId);
         registration.setSessionId(sessionId);
         registration.setSubject(session.getSubject());
         registration.setStatus(0);
         registration.setRetakeCount(0);
+        registration.setIsRetake(isRetake ? 1 : 0);
         registration.setApplyTime(LocalDateTime.now());
         examRegistrationService.save(registration);
         return JsonResult.ok();
@@ -177,6 +185,8 @@ public class ExamRegistrationController {
             }
 
             // 审核通过时，根据科目费用标准自动生成待支付账单
+            // 注意：补考和首次考试按同一科目考试费标准收费（amount）。
+            // 二次培训费（非全包学员挂科后的额外培训）走 retake_training_record 流程，与此无关。
             FeeStandard examFee = feeStandardService.lambdaQuery()
                     .eq(FeeStandard::getLicenseType, session.getLicenseType())
                     .eq(FeeStandard::getSubject, session.getSubject())
@@ -249,6 +259,7 @@ public class ExamRegistrationController {
             map.put("score", reg.getScore());
             map.put("passStatus", reg.getPassStatus());
             map.put("retakeCount", reg.getRetakeCount());
+            map.put("isRetake", reg.getIsRetake());
             map.put("applyTime", reg.getApplyTime());
             map.put("auditTime", reg.getAuditTime());
 
@@ -293,8 +304,9 @@ public class ExamRegistrationController {
             map.put("status", reg.getStatus());
             map.put("statusDesc", getStatusDesc(reg.getStatus()));
             map.put("retakeCount", reg.getRetakeCount());
+            map.put("isRetake", reg.getIsRetake());
             map.put("applyTime", reg.getApplyTime());
-            
+
             // 查询考试场次信息
             if (reg.getSessionId() != null) {
                 ExamSession session = examSessionService.getById(reg.getSessionId());

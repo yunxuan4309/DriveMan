@@ -19,7 +19,7 @@ public class PaymentRecord {
     /** 学员 user_id */
     private Integer studentId;
 
-    /** 业务类型: registration_fee-报名费, exam_fee-考试费, familiarization_fee-合场费, other-其他 */
+    /** 业务类型: registration_fee-报名费, exam_fee-考试费, training_fee-二次培训费, familiarization_fee-合场费, other-其他 */
     private String bizType;
 
     /** 关联业务记录ID */

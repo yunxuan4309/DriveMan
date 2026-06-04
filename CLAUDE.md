@@ -37,7 +37,8 @@ DriveMan/
 │   │   ├── upgrade_version_lock.sql #   乐观锁版本号列
 │   │   ├── upgrade_payment_record.sql #   支付记录表
 │   │   ├── upgrade_familiarization_record.sql # 合场记录表
-│   │   └── upgrade_coach_vehicle_application.sql # 教练准教车型变更申请表
+│   │   ├── upgrade_coach_vehicle_application.sql # 教练准教车型变更申请表
+│   │   └── upgrade_coach_application.sql # coach_application 表扩展
 │   └── test/
 │       └── test_data.sql            # 测试数据补充
 │
@@ -90,8 +91,9 @@ DriveMan/
 │   │   ├── StatisticsController.java         #   统计报表
 │   │   ├── PaymentController.java            #   支付管理
 │   │   ├── FamiliarizationController.java    #   合场管理
+│   │   ├── RetakeTrainingController.java     #   二次培训管理
 │   │
-│   ├── entity/                               # 数据实体（17 个，含 ExamVenue + SpecialExamRecord + CoachVehicleApplication + PaymentRecord + FamiliarizationRecord）
+│   ├── entity/                               # 数据实体（18 个，含 ExamVenue + SpecialExamRecord + CoachVehicleApplication + PaymentRecord + FamiliarizationRecord + RetakeTrainingRecord）
 │   │   ├── User.java                         #   用户表
 │   │   ├── Coach.java                        #   教练扩展表
 │   │   ├── StudentCoach.java                 #   学员-教练关联表
@@ -99,7 +101,7 @@ DriveMan/
 │   │   ├── TrainingRecord.java               #   学时记录表
 │   │   ├── ExamSession.java                  #   考试场次表
 │   │   ├── ExamRegistration.java             #   考试报名表
-│   │   ├── CoachApplication.java             #   教练选择申请表
+│   │   ├── CoachApplication.java             #   教练选择/移交申请表
 │   │   ├── FeeStandard.java                  #   费用标准表
 │   │   ├── LicenseConfig.java                #   驾照类型配置表
 │   │   ├── Notice.java                       #   通知公告表
@@ -109,8 +111,9 @@ DriveMan/
 │   │   ├── CoachVehicleApplication.java      #   教练准教车型变更申请表
 │   │   ├── PaymentRecord.java                #   支付记录表
 │   │   ├── FamiliarizationRecord.java        #   合场记录表
+│   │   ├── RetakeTrainingRecord.java         #   二次培训记录表
 │   │
-│   ├── mapper/                               # Mapper 接口（18 个，均继承 BaseMapper）
+│   ├── mapper/                               # Mapper 接口（19 个，均继承 BaseMapper）
 │   │   ├── UserMapper.java
 │   │   ├── CoachMapper.java
 │   │   ├── StudentCoachMapper.java
@@ -128,6 +131,7 @@ DriveMan/
 │   │   ├── ConfigMapper.java
 │   │   ├── PaymentRecordMapper.java
 │   │   ├── FamiliarizationRecordMapper.java
+│   │   └── RetakeTrainingRecordMapper.java
 │   │   └── CoachVehicleApplicationMapper.java
 │   │
 │   ├── service/                           # 业务层
@@ -149,6 +153,7 @@ DriveMan/
 │   │   ├── ISpecialExamRecordService.java        #   特种车辆考试记录
 │   │   ├── IPaymentRecordService.java            #   支付管理
 │   │   ├── IFamiliarizationRecordService.java    #   合场管理
+│   │   ├── IRetakeTrainingService.java            #   二次培训
 │   │   └── ICoachVehicleApplicationService.java  #   教练准教车型变更
 │   │   │
 │   │   └── impl/
@@ -168,6 +173,7 @@ DriveMan/
 │   │       ├── PaymentRecordServiceImpl.java
 │   │       ├── FamiliarizationRecordServiceImpl.java
 │   │       ├── CoachVehicleApplicationServiceImpl.java
+│   │       ├── RetakeTrainingServiceImpl.java      #   二次培训
 │   │       └── UserServiceImpl.java
 │   │
 │   ├── utils/
@@ -199,8 +205,12 @@ DriveMan/
 ├── 考试报名审核接口文档.md
 ├── 考试场次安排接口文档.md
 ├── 教练准教车型变更申请接口文档.md
+├── 教练分配管理接口文档.md
+├── 教练申请审核接口文档.md
+├── 教练移交学员接口文档.md
 ├── 支付管理接口文档.md
 ├── 合场管理接口文档.md
+├── 二次培训管理接口文档.md
 ├── 基础数据管理接口文档.md
 ├── 基础数据管理优化方案.md
 ├── 业务逻辑分析.md
@@ -229,7 +239,7 @@ DriveMan/
 - 教练信息 CRUD，评分、执教年限、准教车型管理
 - 教练分配：自动推荐（按车型匹配 + 评分排序）+ 管理员手动分配 + 学员申请
 - `FIND_IN_SET` 处理逗号分隔的准教车型字段
-- 教练端门户（`/coach-portal`）：查看名下学员列表、查看名下学员考试报名、录入学时、约课确认/拒绝、设置空闲时间、查看工作量统计、查看个人评分、提交/查看准教车型变更申请
+- 教练端门户（`/coach-portal`）：查看名下学员列表、查看名下学员考试报名、录入学时、约课确认/拒绝、设置空闲时间、查看工作量统计、查看个人评分、提交/查看准教车型变更申请、申请移交学员给其他教练
 
 ### 5. 约课管理
 - 学员预约教练课程，课程时间管理，取消约课
@@ -298,6 +308,8 @@ DriveMan/
 | 考场管理 | `/exam-venues` | 管理员 |
 | 教练申请 | `/coach-applications` | 学员/管理员 |
 | 教练分配 | `/coach-assignments` | 管理员 |
+| 教练分配-按教练查学员 | `/coach-assignments/coach/{coachId}/students` | 管理员 |
+| 教练端-移交学员 | `/coach-portal/student-transfers` | 教练 |
 | 费用标准 | `/fee-standards` | 管理员 |
 | 车型配置 | `/license-configs` | 管理员 |
 | 通知公告 | `/notices` | 全部（登录） |
@@ -309,6 +321,8 @@ DriveMan/
 | 特种车辆考试 | `/special-exam-records` | 管理员 |
 | 教练准教车型变更 | `/coach-portal/vehicle-applications` | 教练 |
 | 教练准教车型变更审核 | `/coach-vehicle-applications` | 管理员 |
+| 二次培训管理 | `/retake-trainings` | 学员/管理员 |
+| 教练端-二次培训 | `/coach-portal/retake-trainings` | 教练 |
 
 **统一响应格式:** `JsonResult<T>` — `{ state: Integer, message: String | null, data: T }`
 
@@ -391,7 +405,7 @@ mvn spring-boot:run
 - [x] 全局跨域配置
 - [x] Knife4j 接口文档
 - [x] 通用配置（分页、自动填充、逻辑删除、Redis 模板、Validator）
-- [x] 接口文档按模块拆分（14 份独立文档）
+- [x] 接口文档按模块拆分（17 份独立文档）
 - [x] 数据库目录拆分（full/ + upgrade/ + test/）
 - [x] 增量升级脚本（basic_data / version_lock）
 - [x] MyBatis-Plus 乐观锁（`@Version` + `OptimisticLockerInnerInterceptor`）
@@ -410,6 +424,17 @@ mvn spring-boot:run
 - [x] 收入看板（月度趋势 / 来源分布饼图 / 收支汇总统计）
 - [x] 欠费清单（含学员姓名/电话/车型信息）
 - [x] 支付管理 + 合场管理接口文档（给前端对接使用）
+- [x] 学员申请教练增加重复提交校验 + 审核通过时自动解绑旧教练
+- [x] 教练主动移交学员给其他教练（含审核流程）
+- [x] 管理员按教练查询名下学员（`GET /coach-assignments/coach/{coachId}/students`）
+- [x] 学员申请记录查询返回教练姓名等可读字段
+- [x] 教练分配管理 / 教练申请审核 / 教练移交学员 三份接口文档
+- [x] 二次培训（补考培训）完整流程：自动识别全包学员免缴费、非全包学员管理员设定培训费生成账单、教练只读可见
+      - `retake_training_record` 表 + 实体 + Mapper + Service + Controller
+      - `POST /retake-trainings` 学员申请（全包自动通过）
+      - `PUT /retake-trainings/{id}/audit` 管理员审核（设定培训费）
+      - `GET /coach-portal/retake-trainings` 教练只读可见
+      - `exam_registration.is_retake` 仅标识记录，不参与计费
 
 ### 待完善
 

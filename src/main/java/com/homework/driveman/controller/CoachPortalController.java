@@ -15,6 +15,7 @@ import com.homework.driveman.mapper.TrainingRecordMapper;
 import com.homework.driveman.service.IAppointmentService;
 import com.homework.driveman.service.ICoachPortalService;
 import com.homework.driveman.service.ICoachVehicleApplicationService;
+import com.homework.driveman.service.IRetakeTrainingService;
 import com.homework.driveman.service.IUserService;
 import com.homework.driveman.utils.CurrentUser;
 import com.homework.driveman.web.JsonResult;
@@ -66,6 +67,9 @@ public class CoachPortalController {
 
     @Autowired
     private CoachApplicationMapper coachApplicationMapper;
+
+    @Autowired
+    private IRetakeTrainingService retakeTrainingService;
 
     /**
      * 从当前登录用户中提取 coachId（coach 表主键）
@@ -420,5 +424,16 @@ public class CoachPortalController {
             return map;
         }).collect(Collectors.toList());
         return JsonResult.ok(result);
+    }
+
+    // ==================== 11. 查看名下学员二次培训记录（只读） ====================
+
+    @RequireRole(2)
+    @Operation(summary = "查看名下学员二次培训记录",
+            description = "教练查看名下学员的二次培训（补考培训）申请记录，仅可查看不可审核。全包学员免缴费，非全包学员需缴费。")
+    @GetMapping("/retake-trainings")
+    public JsonResult<List<Map<String, Object>>> getRetakeTrainings(HttpServletRequest request) {
+        Integer coachId = resolveCoachId(request);
+        return JsonResult.ok(retakeTrainingService.listByCoach(coachId));
     }
 }

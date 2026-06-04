@@ -37,6 +37,9 @@ public class ExamRegistration {
     /** 补考次数 */
     private Integer retakeCount;
 
+    /** 是否补考: 0-首次考试, 1-补考（仅标识记录，不影响计费；二次培训费走 retake_training_record 表） */
+    private Integer isRetake;
+
     /** 报名时间 */
     private LocalDateTime applyTime;
 
