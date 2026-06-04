@@ -81,7 +81,7 @@ CREATE TABLE `appointment` (
     `coach_id` INT UNSIGNED NOT NULL COMMENT '教练coach_id',
     `start_time` DATETIME NOT NULL COMMENT '课程开始时间',
     `end_time` DATETIME NOT NULL COMMENT '课程结束时间',
-    `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态: 0-待确认,1-已确认,2-已完成,3-已取消',
+    `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态: 0-待确认,1-已确认,2-已拒绝,3-已取消',
     `cancel_reason` VARCHAR(200) DEFAULT NULL COMMENT '取消原因',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '申请时间',
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
@@ -340,3 +340,54 @@ CREATE TABLE IF NOT EXISTS `coach_vehicle_application` (
     KEY `idx_status` (`status`),
     KEY `idx_is_deleted` (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='教练准教车型变更申请表';
+
+-- ============================================
+-- 17. 支付记录表
+-- ============================================
+CREATE TABLE IF NOT EXISTS `payment_record` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `student_id` INT UNSIGNED NOT NULL COMMENT '学员 user_id',
+    `biz_type` VARCHAR(30) NOT NULL COMMENT '业务类型: registration_fee-报名费, exam_fee-考试费, familiarization_fee-合场费, other-其他',
+    `biz_id` INT UNSIGNED DEFAULT NULL COMMENT '关联业务记录ID',
+    `amount` DECIMAL(10,2) NOT NULL COMMENT '金额(元)',
+    `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态: 0-待支付, 1-已支付, 2-已退款',
+    `remark` VARCHAR(255) DEFAULT NULL COMMENT '备注',
+    `pay_time` DATETIME DEFAULT NULL COMMENT '支付时间',
+    `refund_time` DATETIME DEFAULT NULL COMMENT '退款时间',
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
+    `is_deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '软删除: 0-未删除, 1-已删除',
+    PRIMARY KEY (`id`),
+    KEY `idx_student_id` (`student_id`),
+    KEY `idx_biz_type` (`biz_type`),
+    KEY `idx_status` (`status`),
+    KEY `idx_is_deleted` (`is_deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='支付记录表 — 记录每笔应收/实收/退款';
+
+-- ============================================
+-- 18. 合场记录表
+-- ============================================
+CREATE TABLE IF NOT EXISTS `familiarization_record` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `student_id` INT UNSIGNED NOT NULL COMMENT '学员 user_id',
+    `exam_session_id` INT UNSIGNED NOT NULL COMMENT '关联考试场次ID',
+    `subject` TINYINT NOT NULL COMMENT '科目（冗余，取考场次科目）',
+    `car_type` TINYINT NOT NULL COMMENT '用车类型: 1-教练车(教练陪同), 2-考试车(考场提供)',
+    `coach_id` INT UNSIGNED DEFAULT NULL COMMENT '陪同教练 coach_id（教练车模式时必填）',
+    `amount` DECIMAL(8,2) NOT NULL COMMENT '合场费用(元)',
+    `payment_record_id` INT UNSIGNED DEFAULT NULL COMMENT '关联支付记录ID',
+    `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态: 0-待支付, 1-已支付(待安排), 2-已完成, 3-已取消',
+    `scheduled_time` DATETIME DEFAULT NULL COMMENT '预约合场时间',
+    `pay_time` DATETIME DEFAULT NULL COMMENT '支付时间',
+    `remark` VARCHAR(255) DEFAULT NULL COMMENT '备注',
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
+    `is_deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '软删除: 0-未删除, 1-已删除',
+    PRIMARY KEY (`id`),
+    KEY `idx_student_id` (`student_id`),
+    KEY `idx_exam_session_id` (`exam_session_id`),
+    KEY `idx_coach_id` (`coach_id`),
+    KEY `idx_status` (`status`),
+    KEY `idx_payment_record_id` (`payment_record_id`),
+    KEY `idx_is_deleted` (`is_deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='合场记录表 — 学员考前熟悉考场/考车';

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.ExamRegistration;
 import com.homework.driveman.entity.ExamSession;
+import com.homework.driveman.entity.FeeStandard;
 import com.homework.driveman.entity.LicenseConfig;
 import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
@@ -12,7 +13,9 @@ import com.homework.driveman.mapper.LicenseConfigMapper;
 import com.homework.driveman.mapper.TrainingRecordMapper;
 import com.homework.driveman.service.IExamRegistrationService;
 import com.homework.driveman.service.IExamSessionService;
+import com.homework.driveman.service.IFeeStandardService;
 import com.homework.driveman.service.IFileService;
+import com.homework.driveman.service.IPaymentRecordService;
 import com.homework.driveman.service.IPdfService;
 import com.homework.driveman.service.IUserService;
 import com.homework.driveman.utils.CurrentUser;
@@ -51,6 +54,12 @@ public class ExamRegistrationController {
 
     @Autowired
     private IUserService userService;
+
+    @Autowired
+    private IFeeStandardService feeStandardService;
+
+    @Autowired
+    private IPaymentRecordService paymentRecordService;
 
     @Autowired
     private LicenseConfigMapper licenseConfigMapper;
@@ -165,6 +174,17 @@ public class ExamRegistrationController {
                 fileService.saveRecord(registration.getStudentId(), ticketPath,
                         "准考证_" + student.getRealName() + "_科目" + session.getSubject() + ".pdf",
                         "admission_ticket", "exam_ticket", registration.getId());
+            }
+
+            // 审核通过时，根据科目费用标准自动生成待支付账单
+            FeeStandard examFee = feeStandardService.lambdaQuery()
+                    .eq(FeeStandard::getLicenseType, session.getLicenseType())
+                    .eq(FeeStandard::getSubject, session.getSubject())
+                    .one();
+            if (examFee != null) {
+                paymentRecordService.autoCreate(registration.getStudentId(), "exam_fee", id,
+                        examFee.getAmount(),
+                        session.getLicenseType() + " 科目" + session.getSubject() + " " + examFee.getDescription());
             }
         } else {
             registration.setStatus(2);

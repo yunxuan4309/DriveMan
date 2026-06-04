@@ -1,10 +1,13 @@
 package com.homework.driveman.controller;
 
 import com.homework.driveman.config.RequireRole;
+import com.homework.driveman.entity.FeeStandard;
 import com.homework.driveman.entity.File;
 import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
+import com.homework.driveman.service.IFeeStandardService;
 import com.homework.driveman.service.IFileService;
+import com.homework.driveman.service.IPaymentRecordService;
 import com.homework.driveman.service.IPdfService;
 import com.homework.driveman.service.IUserService;
 import com.homework.driveman.web.JsonResult;
@@ -30,6 +33,12 @@ public class RegistrationController {
 
     @Autowired
     private IFileService fileService;
+
+    @Autowired
+    private IFeeStandardService feeStandardService;
+
+    @Autowired
+    private IPaymentRecordService paymentRecordService;
 
     @RequireRole(3)
     @Operation(summary = "审核学员报名",
@@ -62,6 +71,17 @@ public class RegistrationController {
             fileService.saveRecord(userId, ticketPath,
                     "准考证_" + user.getRealName() + ".pdf", "admission_ticket",
                     "exam_ticket", userId);
+
+            // 审核通过时，根据学员报考车型的全包套餐价自动生成待支付账单
+            FeeStandard packageFee = feeStandardService.lambdaQuery()
+                    .eq(FeeStandard::getLicenseType, user.getLicenseType())
+                    .isNull(FeeStandard::getSubject)
+                    .one();
+            if (packageFee != null) {
+                paymentRecordService.autoCreate(userId, "registration_fee", userId,
+                        packageFee.getAmount(),
+                        user.getLicenseType() + " " + packageFee.getDescription());
+            }
         } else {
             // 审核不通过
             user.setStatus(2);

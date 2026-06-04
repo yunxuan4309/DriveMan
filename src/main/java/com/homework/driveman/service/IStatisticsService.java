@@ -15,4 +15,7 @@ public interface IStatisticsService {
 
     /** 教练工作量柱状图数据 */
     Map<String, Object> getCoachWorkload();
+
+    /** 收入看板（月度趋势 + 来源分布 + 汇总） */
+    Map<String, Object> getRevenueSummary();
 }

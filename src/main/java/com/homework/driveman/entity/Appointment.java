@@ -28,7 +28,7 @@ public class Appointment {
     /** 课程结束时间 */
     private LocalDateTime endTime;
 
-    /** 状态: 0-待确认, 1-已确认, 2-已完成, 3-已取消 */
+    /** 状态: 0-待确认, 1-已确认, 2-已拒绝, 3-已取消 */
     private Integer status;
 
     /** 取消原因 */

@@ -31,16 +31,23 @@ public class StatisticsController {
     }
 
     @RequireRole(3)
-    @Operation(summary = "考试合格率（饼图）", description = "所有科目的考试合格/不合格分布，返回 ECharts pie 格式")
+    @Operation(summary = "各科目月度通过率趋势（折线图）", description = "按科目拆分、按月展示考试通过率变化趋势，返回 ECharts 多 line 格式")
     @GetMapping("/pass-rate")
     public JsonResult<Map<String, Object>> getPassRate() {
         return JsonResult.ok(statisticsService.getPassRate());
     }
 
     @RequireRole(3)
-    @Operation(summary = "教练工作量（柱状图）", description = "各教练的已完成/已确认约课数量，返回 ECharts bar 格式")
+    @Operation(summary = "教练效能排名（柱状图）", description = "按学员考试通过率排名，含评分/带教学员数/执教年限明细，返回 ECharts bar 格式 + detailData")
     @GetMapping("/coach-workload")
     public JsonResult<Map<String, Object>> getCoachWorkload() {
         return JsonResult.ok(statisticsService.getCoachWorkload());
+    }
+
+    @RequireRole(3)
+    @Operation(summary = "收入看板", description = "月度收入趋势柱状图 + 当月收入来源饼图 + 收支汇总")
+    @GetMapping("/revenue-summary")
+    public JsonResult<Map<String, Object>> getRevenueSummary() {
+        return JsonResult.ok(statisticsService.getRevenueSummary());
     }
 }

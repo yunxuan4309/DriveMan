@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 /** 考试报名表 Mapper */
 @Mapper
@@ -25,4 +26,18 @@ public interface ExamRegistrationMapper extends BaseMapper<ExamRegistration> {
     @Select("SELECT DISTINCT subject FROM exam_registration " +
             "WHERE student_id = #{studentId} AND pass_status = 1 AND is_deleted = 0")
     Set<Integer> findPassedSubjectsByStudent(@Param("studentId") Integer studentId);
+
+    /** 各科目月度考试通过率趋势 */
+    @Select("SELECT " +
+            "  DATE_FORMAT(s.exam_date, '%Y-%m') AS month, " +
+            "  s.subject, " +
+            "  COUNT(*) AS total, " +
+            "  SUM(CASE WHEN er.pass_status = 1 THEN 1 ELSE 0 END) AS pass_count, " +
+            "  ROUND(SUM(CASE WHEN er.pass_status = 1 THEN 1.0 ELSE 0.0 END) / COUNT(*) * 100, 1) AS pass_rate " +
+            "FROM exam_registration er " +
+            "JOIN exam_session s ON er.session_id = s.id AND s.is_deleted = 0 " +
+            "WHERE er.pass_status IS NOT NULL AND er.is_deleted = 0 " +
+            "GROUP BY DATE_FORMAT(s.exam_date, '%Y-%m'), s.subject " +
+            "ORDER BY month ASC, s.subject ASC")
+    List<Map<String, Object>> selectMonthlyPassRate();
 }
