@@ -6,17 +6,21 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 考场信息表 — 管理考场基础信息
+ * 场地统一管理表 — 考场/训练场地/体检地点
+ * venue_type: 1-考场, 2-训练场地, 3-体检地点
  * status: 1-启用, 0-停用
  */
 @Data
-@TableName("exam_venue")
-public class ExamVenue {
+@TableName("venue")
+public class Venue {
 
     @TableId(type = IdType.AUTO)
     private Integer id;
 
-    /** 考场名称 */
+    /** 类型: 1-考场, 2-训练场地, 3-体检地点 */
+    private Integer venueType;
+
+    /** 场地名称 */
     private String name;
 
     /** 详细地址 */

@@ -132,15 +132,20 @@ INSERT IGNORE INTO `license_config` (`license_type`, `subject`, `required_hours`
 ('N3', 2, 20, '起步,压实作业,转向,掉头,停放',        '压路机实操考试', 2, 2, 0, NULL);
 
 -- ============================================
--- 12. 考场信息（同步写入 exam_venue）
+-- 12. 场地数据（考场 + 训练场地 + 体检地点）
 -- ============================================
-INSERT IGNORE INTO `exam_venue` (`name`, `address`, `capacity`, `status`) VALUES
-('南岸区车管所', '南岸区', 100, 1),
-('南坪科目二考场', '南坪', 80, 1),
-('八公里科目三考场', '八公里', 60, 1);
+INSERT IGNORE INTO `venue` (`venue_type`, `name`, `address`, `capacity`, `status`) VALUES
+(1, '南岸区车管所', '南岸区', 100, 1),
+(1, '南坪科目二考场', '南坪', 80, 1),
+(1, '八公里科目三考场', '八公里', 60, 1),
+(2, '南岸区训练基地', '南岸区', NULL, 1),
+(2, '渝北区训练场', '渝北区', NULL, 1),
+(3, '南岸区人民医院体检中心', '南岸区', NULL, 1),
+(3, '渝中区第一人民医院体检科', '渝中区', NULL, 1),
+(3, '江北区中医院体检部', '江北区', NULL, 1);
 
 -- 考场ID回填到考试场次
 UPDATE `exam_session` e
-JOIN `exam_venue` v ON e.`location` = v.`name`
+JOIN `venue` v ON e.`location` = v.`name`
 SET e.`venue_id` = v.`id`
 WHERE e.`venue_id` IS NULL;

@@ -13,7 +13,7 @@ public interface IPhysicalExamService extends IService<PhysicalExam> {
     /**
      * 学员提交体检申请
      */
-    PhysicalExam apply(Integer studentId, String location, String examDate);
+    PhysicalExam apply(Integer studentId, Integer venueId, String examDate);
 
     /**
      * 查询学员的体检申请记录
@@ -29,4 +29,9 @@ public interface IPhysicalExamService extends IService<PhysicalExam> {
      * 上传体检结果
      */
     void uploadResult(Integer id, Integer fileId, Integer result);
+
+    /**
+     * 获取可选的体检地点列表（从 venue 表查询 venue_type=3）
+     */
+    List<String> getLocations();
 }

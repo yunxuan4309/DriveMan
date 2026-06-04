@@ -19,7 +19,10 @@ public class PhysicalExam {
     /** 学员 user_id */
     private Integer studentId;
 
-    /** 体检地点 */
+    /** 关联场地ID（venue 表） */
+    private Integer venueId;
+
+    /** 体检地点（冗余显示字段，从 venue 表同步） */
     private String location;
 
     /** 预约体检日期 */

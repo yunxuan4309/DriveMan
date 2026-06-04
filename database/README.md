@@ -14,7 +14,9 @@ database/
 │   ├── upgrade_license_type.sql    # 小汽车车型多车型支持升级
 │   ├── upgrade_basic_data.sql      # 基础数据优化（exam_mode、考场、特种车辆）
 │   ├── upgrade_coach_application.sql # coach_application 表扩展——支持教练主动移交学员
-│   └── upgrade_retake_fee.sql       # 二次培训流程：is_retake + retake_training_record 表
+│   ├── upgrade_retake_fee.sql       # 二次培训流程：is_retake + retake_training_record 表
+│   ├── upgrade_physical_exam_license.sql # 新增体检申请 + 增驾申请两张表
+    │   └── upgrade_venue_unified.sql   # 场地统一管理（exam_venue → venue 合并）
 └── test/
     └── test_data.sql               # 测试数据补充
 ```
@@ -46,6 +48,8 @@ mysql -u root -proot driveman < database/upgrade/upgrade_license_type.sql
 mysql -u root -proot driveman < database/upgrade/upgrade_basic_data.sql
 mysql -u root -proot driveman < database/upgrade/upgrade_coach_application.sql
 mysql -u root -proot driveman < database/upgrade/upgrade_retake_fee.sql
+mysql -u root -proot driveman < database/upgrade/upgrade_physical_exam_license.sql
+	mysql -u root -proot driveman < database/upgrade/upgrade_venue_unified.sql
 mysql -u root -proot driveman < database/upgrade/add_constraints.sql
 ```
 

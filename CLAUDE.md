@@ -39,6 +39,7 @@ DriveMan/
 │   │   ├── upgrade_familiarization_record.sql # 合场记录表
 │   │   ├── upgrade_coach_vehicle_application.sql # 教练准教车型变更申请表
 │   │   └── upgrade_coach_application.sql # coach_application 表扩展
+│   │   └── upgrade_venue_unified.sql   # 场地统一管理（exam_venue → venue）
 │   └── test/
 │       └── test_data.sql            # 测试数据补充
 │
@@ -68,7 +69,7 @@ DriveMan/
 │   │   ├── CoachWorkloadVO.java             #   教练工作量 VO
 │   │   └── StudentInfoVO.java               #   学员信息 VO
 │   │
-│   ├── controller/                           # REST 控制器（23 个，22 个活跃，1 个已禁用）
+│   ├── controller/                           # REST 控制器（25 个，24 个活跃，1 个已禁用）
 │   │   ├── LoginController.java              #   认证登录
 │   │   ├── UserController.java               #   用户管理
 │   │   ├── CoachController.java              #   教练管理
@@ -85,15 +86,17 @@ DriveMan/
 │   │   ├── FeeStandardController.java        #   费用标准管理
 │   │   ├── LicenseConfigController.java      #   驾照车型配置
 │   │   ├── NoticeController.java             #   通知公告管理
-│   │   ├── ExamVenueController.java          #   考场管理
+│   │   ├── VenueController.java              #   场地管理（考场/训练场地/体检地点）
 │   │   ├── CoachVehicleApplicationController.java # 教练准教车型变更审核
 │   │   ├── ProgressController.java           #   学习进度查询
 │   │   ├── StatisticsController.java         #   统计报表
 │   │   ├── PaymentController.java            #   支付管理
 │   │   ├── FamiliarizationController.java    #   合场管理
 │   │   ├── RetakeTrainingController.java     #   二次培训管理
+│   │   ├── PhysicalExamController.java       #   体检申请
+│   │   ├── LicenseUpgradeController.java     #   增驾申请
 │   │
-│   ├── entity/                               # 数据实体（18 个，含 ExamVenue + SpecialExamRecord + CoachVehicleApplication + PaymentRecord + FamiliarizationRecord + RetakeTrainingRecord）
+│   ├── entity/                               # 数据实体（20 个，含 PhysicalExam + LicenseUpgrade + Venue + SpecialExamRecord + CoachVehicleApplication + PaymentRecord + FamiliarizationRecord + RetakeTrainingRecord）
 │   │   ├── User.java                         #   用户表
 │   │   ├── Coach.java                        #   教练扩展表
 │   │   ├── StudentCoach.java                 #   学员-教练关联表
@@ -106,14 +109,16 @@ DriveMan/
 │   │   ├── LicenseConfig.java                #   驾照类型配置表
 │   │   ├── Notice.java                       #   通知公告表
 │   │   ├── File.java                         #   文件表（含biz_type/biz_id/file_size/mime_type）
-│   │   ├── ExamVenue.java                    #   考场表
+│   │   ├── Venue.java                        #   场地统一管理表
 │   │   ├── SpecialExamRecord.java            #   特种车考试记录表
 │   │   ├── CoachVehicleApplication.java      #   教练准教车型变更申请表
 │   │   ├── PaymentRecord.java                #   支付记录表
 │   │   ├── FamiliarizationRecord.java        #   合场记录表
 │   │   ├── RetakeTrainingRecord.java         #   二次培训记录表
+│   │   ├── PhysicalExam.java                 #   体检申请表
+│   │   ├── LicenseUpgrade.java               #   增驾申请表
 │   │
-│   ├── mapper/                               # Mapper 接口（19 个，均继承 BaseMapper）
+│   ├── mapper/                               # Mapper 接口（21 个，均继承 BaseMapper）
 │   │   ├── UserMapper.java
 │   │   ├── CoachMapper.java
 │   │   ├── StudentCoachMapper.java
@@ -126,12 +131,14 @@ DriveMan/
 │   │   ├── LicenseConfigMapper.java
 │   │   ├── NoticeMapper.java
 │   │   ├── FileMapper.java
-│   │   ├── ExamVenueMapper.java
+│   │   ├── VenueMapper.java
 │   │   ├── SpecialExamRecordMapper.java
 │   │   ├── ConfigMapper.java
 │   │   ├── PaymentRecordMapper.java
 │   │   ├── FamiliarizationRecordMapper.java
-│   │   └── RetakeTrainingRecordMapper.java
+│   │   ├── RetakeTrainingRecordMapper.java
+│   │   ├── PhysicalExamMapper.java
+│   │   ├── LicenseUpgradeMapper.java
 │   │   └── CoachVehicleApplicationMapper.java
 │   │
 │   ├── service/                           # 业务层
@@ -149,11 +156,13 @@ DriveMan/
 │   │   ├── IStatisticsService.java        #   统计报表
 │   │   ├── ITrainingRecordService.java    #   学时记录
 │   │   ├── IUserService.java
-│   │   ├── IExamVenueService.java              #   考场管理
+│   │   ├── IVenueService.java              #   场地管理
 │   │   ├── ISpecialExamRecordService.java        #   特种车辆考试记录
 │   │   ├── IPaymentRecordService.java            #   支付管理
 │   │   ├── IFamiliarizationRecordService.java    #   合场管理
 │   │   ├── IRetakeTrainingService.java            #   二次培训
+│   │   ├── IPhysicalExamService.java              #   体检申请
+│   │   ├── ILicenseUpgradeService.java            #   增驾申请
 │   │   └── ICoachVehicleApplicationService.java  #   教练准教车型变更
 │   │   │
 │   │   └── impl/
@@ -174,6 +183,9 @@ DriveMan/
 │   │       ├── FamiliarizationRecordServiceImpl.java
 │   │       ├── CoachVehicleApplicationServiceImpl.java
 │   │       ├── RetakeTrainingServiceImpl.java      #   二次培训
+│   │       ├── VenueServiceImpl.java              #   场地管理
+│   │       ├── PhysicalExamServiceImpl.java        #   体检申请
+│   │       ├── LicenseUpgradeServiceImpl.java      #   增驾申请
 │   │       └── UserServiceImpl.java
 │   │
 │   ├── utils/
@@ -211,6 +223,9 @@ DriveMan/
 ├── 支付管理接口文档.md
 ├── 合场管理接口文档.md
 ├── 二次培训管理接口文档.md
+├── 体检申请接口文档.md
+├── 增驾申请接口文档.md
+├── 场地管理接口文档.md
 ├── 基础数据管理接口文档.md
 ├── 基础数据管理优化方案.md
 ├── 业务逻辑分析.md
@@ -305,7 +320,7 @@ DriveMan/
 | 考试场次 | `/exam-sessions` | 全部（登录） |
 | 考试报名 | `/exam-registrations` | 学员/管理员 |
 | 教练端-考试报名 | `/coach-portal/exam-registrations` | 教练 |
-| 考场管理 | `/exam-venues` | 管理员 |
+| 场地管理 | `/venues` | 管理员 |
 | 教练申请 | `/coach-applications` | 学员/管理员 |
 | 教练分配 | `/coach-assignments` | 管理员 |
 | 教练分配-按教练查学员 | `/coach-assignments/coach/{coachId}/students` | 管理员 |
@@ -323,6 +338,9 @@ DriveMan/
 | 教练准教车型变更审核 | `/coach-vehicle-applications` | 管理员 |
 | 二次培训管理 | `/retake-trainings` | 学员/管理员 |
 | 教练端-二次培训 | `/coach-portal/retake-trainings` | 教练 |
+| 体检申请 | `/physical-exams` | 学员/管理员 |
+| 体检申请-地点管理 | `/physical-exams/locations` | 学员(读)/管理员(通过 /venues 维护) |
+| 增驾申请 | `/license-upgrades` | 学员/管理员 |
 
 **统一响应格式:** `JsonResult<T>` — `{ state: Integer, message: String | null, data: T }`
 
@@ -380,7 +398,7 @@ mvn spring-boot:run
 
 ### 已完成
 - [x] Spring Boot + MyBatis-Plus 框架搭建
-- [x] 18 张数据库表结构设计 + 初始化数据 + 测试数据
+- [x] 20 张数据库表结构设计 + 初始化数据 + 测试数据
 - [x] 三层架构（Controller/Service/Mapper）代码生成
 - [x] JWT 登录认证 + Token 校验拦截器
 - [x] `@RequireRole` 角色权限注解（已应用到 19 个 Controller 共 89 处敏感接口）
@@ -405,7 +423,7 @@ mvn spring-boot:run
 - [x] 全局跨域配置
 - [x] Knife4j 接口文档
 - [x] 通用配置（分页、自动填充、逻辑删除、Redis 模板、Validator）
-- [x] 接口文档按模块拆分（17 份独立文档）
+- [x] 接口文档按模块拆分（24 份独立文档）
 - [x] 数据库目录拆分（full/ + upgrade/ + test/）
 - [x] 增量升级脚本（basic_data / version_lock）
 - [x] MyBatis-Plus 乐观锁（`@Version` + `OptimisticLockerInnerInterceptor`）
@@ -435,16 +453,34 @@ mvn spring-boot:run
       - `PUT /retake-trainings/{id}/audit` 管理员审核（设定培训费）
       - `GET /coach-portal/retake-trainings` 教练只读可见
       - `exam_registration.is_retake` 仅标识记录，不参与计费
+- [x] 体检申请流程：学员提交体检申请（选择地点/日期）、管理员审核、管理员录入结果（报告文件+合格/不合格）
+      - `physical_exam` 表 + 实体 + Mapper + Service + Controller
+      - `POST /physical-exams/apply` 学员申请
+      - `PUT /physical-exams/{id}/audit` 管理员审核
+      - `PUT /physical-exams/{id}/result` 管理员录入结果
+- [x] 增驾申请流程：学员申请增驾（同级/升级）、管理员审核、管理员录入考试成绩（通过后自动更新车型）
+      - `license_upgrade` 表 + 实体 + Mapper + Service + Controller
+      - 车型升级路径校验（依据公安部第172号令）
+      - 年龄校验、同级/升级增驾区分
+      - `POST /license-upgrades/apply` 学员申请
+      - `PUT /license-upgrades/{id}/audit` 管理员审核
+      - `PUT /license-upgrades/{id}/exam-result` 管理员录入成绩
+- [x] 场地统一管理：将 exam_venue 表合并为 venue 表，支持三种场地类型（考场/训练场地/体检地点）
+      - `venue` 表 + 实体/Mapper/Service/Controller（统一 CRUD）
+      - 体检地点数据源从 config 表的 JSON 配置迁移到 venue 表结构化存储
+      - 体检申请 `POST /physical-exams/apply` 改收 venueId，自动同步地点名称
+      - 旧版 ExamVenue 相关 5 个文件已删除
+      - `database/upgrade/upgrade_venue_unified.sql` 增量升级脚本
 
 ### 待完善
 
 **P0 — 实体与数据库同步** ✅ 全部已对齐
 - `LicenseConfig.java` 已含 exam_mode, coach_audit_required, cert_name
 - `ExamSession.java` 已含 venueId + @Version
-- ExamVenue、SpecialExamRecord、ConfigMapper 均已实现
+- Venue、SpecialExamRecord、ConfigMapper 均已实现
 
 **P1 — 功能待完善**
-- [ ] 数据库 18 张表 + 对应的 Java 实体/Mapper/Service/Controller 已全部对齐（待补充 Config 实体类，目前仅通过 ConfigMapper 原生 SQL 访问）
+- [ ] 数据库 20 张表 + 对应的 Java 实体/Mapper/Service/Controller 已全部对齐（待补充 Config 实体类，目前仅通过 ConfigMapper 原生 SQL 访问）
 
 **P2 — 业务逻辑待优化**
 - [ ] Token 刷新接口（当前 Token 过期后需重新登录）
@@ -465,6 +501,8 @@ mvn spring-boot:run
 | 教练准教车型变更 | 已实现：教练提交 → 管理员审核 → 自动更新 coach.vehicle_type |
 | 支付管理 | 已实现：payment_record 表 → 欠费管理 / 收入看板 / 账单自动生成 |
 | 合场管理 | 已实现：学员申请 → 支付 → 管理员安排时间 / 完成 / 取消 |
+| 体检申请 | 已实现：学员提交 → 管理员审核 → 录入体检结果 |
+| 增驾申请 | 已实现：学员申请 → 管理员审核 → 录入考试结果（通过后自动更新车型） |
 
 ## 设计约定
 

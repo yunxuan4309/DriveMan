@@ -34,13 +34,13 @@ public class PhysicalExamController {
     // ==================== 学员端接口 ====================
 
     @RequireRole(1)
-    @Operation(summary = "提交体检申请", description = "学员选择体检地点和日期提交申请")
+    @Operation(summary = "提交体检申请", description = "学员选择体检地点（venueId）和日期提交申请")
     @PostMapping("/apply")
     public JsonResult<PhysicalExam> apply(HttpServletRequest request,
-                                          @RequestParam String location,
+                                          @RequestParam Integer venueId,
                                           @RequestParam String examDate) {
         CurrentUser user = getCurrentUser(request);
-        PhysicalExam exam = physicalExamService.apply(user.getUserId(), location, examDate);
+        PhysicalExam exam = physicalExamService.apply(user.getUserId(), venueId, examDate);
         return JsonResult.ok(exam);
     }
 
@@ -83,5 +83,15 @@ public class PhysicalExamController {
                                          @RequestParam Integer result) {
         physicalExamService.uploadResult(id, fileId, result);
         return JsonResult.ok();
+    }
+
+    // ==================== 体检地点管理 ====================
+
+    @RequireRole({1, 3})
+    @Operation(summary = "获取可选体检地点", description = "获取启用的体检地点列表（从 venue 表查询，venue_type=3），学员端用于下拉选择")
+    @GetMapping("/locations")
+    public JsonResult<List<String>> getLocations() {
+        List<String> locations = physicalExamService.getLocations();
+        return JsonResult.ok(locations);
     }
 }
