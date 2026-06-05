@@ -20,6 +20,11 @@ import java.util.*;
 @Service
 public class PaymentRecordServiceImpl implements IPaymentRecordService {
 
+    /** 有效业务类型集合 */
+    public static final Set<String> VALID_BIZ_TYPES = Set.of(
+            "registration_fee", "exam_fee", "familiarization_fee", "training_fee", "other"
+    );
+
     @Autowired
     private PaymentRecordMapper paymentRecordMapper;
 
@@ -47,6 +52,13 @@ public class PaymentRecordServiceImpl implements IPaymentRecordService {
     public PaymentRecord create(PaymentRecord record) {
         if (record.getStudentId() == null || record.getAmount() == null) {
             throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "学员ID和金额不能为空");
+        }
+        if (record.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "金额必须大于0");
+        }
+        if (record.getBizType() != null && !VALID_BIZ_TYPES.contains(record.getBizType())) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                    "无效的业务类型，可选值: " + String.join(", ", VALID_BIZ_TYPES));
         }
         if (record.getStatus() == null) {
             record.setStatus(0);
