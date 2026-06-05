@@ -12,13 +12,15 @@ import java.util.Map;
 @Repository
 public interface FamiliarizationRecordMapper extends BaseMapper<FamiliarizationRecord> {
 
-    /** 查询合场记录（含场次信息、教练姓名） */
+    /** 查询合场记录（含场次信息、教练姓名、学员姓名） */
     @Select("SELECT " +
             "  fr.*, " +
             "  s.exam_date, s.start_time, s.location AS venue_name, s.license_type, " +
+            "  stu.real_name AS student_name, " +
             "  u.real_name AS coach_name " +
             "FROM familiarization_record fr " +
             "JOIN exam_session s ON fr.exam_session_id = s.id " +
+            "LEFT JOIN user stu ON fr.student_id = stu.user_id " +
             "LEFT JOIN coach c ON fr.coach_id = c.coach_id " +
             "LEFT JOIN user u ON c.user_id = u.user_id " +
             "WHERE fr.is_deleted = 0 AND s.is_deleted = 0 " +

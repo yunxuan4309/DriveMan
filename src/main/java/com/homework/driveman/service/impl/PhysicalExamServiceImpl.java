@@ -1,10 +1,15 @@
 package com.homework.driveman.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.homework.driveman.entity.Coach;
 import com.homework.driveman.entity.PhysicalExam;
+import com.homework.driveman.entity.StudentCoach;
 import com.homework.driveman.entity.Venue;
 import com.homework.driveman.exception.ServiceException;
+import com.homework.driveman.mapper.CoachMapper;
 import com.homework.driveman.mapper.PhysicalExamMapper;
+import com.homework.driveman.mapper.StudentCoachMapper;
 import com.homework.driveman.mapper.VenueMapper;
 import com.homework.driveman.service.IPhysicalExamService;
 import com.homework.driveman.web.ServiceCode;
@@ -26,6 +31,12 @@ public class PhysicalExamServiceImpl extends ServiceImpl<PhysicalExamMapper, Phy
 
     @Autowired
     private VenueMapper venueMapper;
+
+    @Autowired
+    private CoachMapper coachMapper;
+
+    @Autowired
+    private StudentCoachMapper studentCoachMapper;
 
     @Override
     public PhysicalExam apply(Integer studentId, Integer venueId, String examDate) {
@@ -138,5 +149,35 @@ public class PhysicalExamServiceImpl extends ServiceImpl<PhysicalExamMapper, Phy
             return Collections.emptyList();
         }
         return venues.stream().map(Venue::getName).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<PhysicalExam> listByCoach(Integer userId) {
+        // 通过 userId 查找教练信息
+        Coach coach = coachMapper.selectOne(
+                new LambdaQueryWrapper<Coach>().eq(Coach::getUserId, userId));
+        if (coach == null) {
+            throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "教练不存在");
+        }
+
+        // 查询该教练名下所有正常绑定的学员ID
+        List<StudentCoach> bindings = studentCoachMapper.selectList(
+                new LambdaQueryWrapper<StudentCoach>()
+                        .eq(StudentCoach::getCoachId, coach.getCoachId())
+                        .eq(StudentCoach::getStatus, 1));
+
+        if (bindings.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Integer> studentIds = bindings.stream()
+                .map(StudentCoach::getStudentId)
+                .collect(Collectors.toList());
+
+        // 查询这些学员的体检申请记录，按创建时间降序排列
+        return lambdaQuery()
+                .in(PhysicalExam::getStudentId, studentIds)
+                .orderByDesc(PhysicalExam::getCreateTime)
+                .list();
     }
 }
