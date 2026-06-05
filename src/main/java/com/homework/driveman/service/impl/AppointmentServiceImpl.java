@@ -45,8 +45,25 @@ public class AppointmentServiceImpl extends ServiceImpl<AppointmentMapper, Appoi
         }
         appointment.setStatus(AppointmentStatus.REJECTED);
         if (reason != null && !reason.isEmpty()) {
-            appointment.setCancelReason(reason);  // 使用实体中的 cancelReason 字段记录拒绝原因
+            appointment.setCancelReason(reason);
         }
+        updateById(appointment);
+    }
+
+    @Override
+    @Transactional
+    public void completeAppointment(Integer appointmentId, Integer coachId) {
+        Appointment appointment = getById(appointmentId);
+        if (appointment == null) {
+            throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "约课记录不存在");
+        }
+        if (!appointment.getCoachId().equals(coachId)) {
+            throw new ServiceException(ServiceCode.ERROR_FORBIDDEN, "无权操作其他教练的约课");
+        }
+        if (appointment.getStatus() != AppointmentStatus.CONFIRMED) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "只能将已确认的约课标记为完成，当前状态：" + appointment.getStatus());
+        }
+        appointment.setStatus(AppointmentStatus.COMPLETED);
         updateById(appointment);
     }
 }
