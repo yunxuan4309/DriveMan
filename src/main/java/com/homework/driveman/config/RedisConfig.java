@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -15,10 +14,8 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 /**
  * Redis 模板配置
  * key 使用 String 序列化，value 使用 Jackson JSON 序列化（支持 Java 8 日期类型）
- * 通过 ConditionalOnProperty 控制是否启用，默认禁用（Redis 未安装时避免启动失败）
  */
 @Configuration
-@ConditionalOnProperty(prefix = "spring.data.redis", name = "enabled", havingValue = "true", matchIfMissing = false)
 public class RedisConfig {
 
     @Bean

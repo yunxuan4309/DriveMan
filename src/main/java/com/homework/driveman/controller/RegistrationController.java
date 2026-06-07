@@ -5,10 +5,12 @@ import com.homework.driveman.entity.FeeStandard;
 import com.homework.driveman.entity.File;
 import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
+import com.homework.driveman.service.IDisabilityInfoService;
 import com.homework.driveman.service.IFeeStandardService;
 import com.homework.driveman.service.IFileService;
 import com.homework.driveman.service.IPaymentRecordService;
 import com.homework.driveman.service.IPdfService;
+import com.homework.driveman.service.ISpecialPersonRecordService;
 import com.homework.driveman.service.IUserService;
 import com.homework.driveman.web.JsonResult;
 import com.homework.driveman.web.ServiceCode;
@@ -40,6 +42,12 @@ public class RegistrationController {
     @Autowired
     private IPaymentRecordService paymentRecordService;
 
+    @Autowired
+    private IDisabilityInfoService disabilityInfoService;
+
+    @Autowired
+    private ISpecialPersonRecordService specialPersonRecordService;
+
     @RequireRole(3)
     @Operation(summary = "审核学员报名",
             description = "pass=true 审核通过（自动生成PDF报名表和准考证），pass=false 审核不通过（需填 reason）")
@@ -56,6 +64,26 @@ public class RegistrationController {
         }
 
         if (pass) {
+            // C5学员需校验残疾信息审核状态
+            if ("C5".equals(user.getLicenseType())) {
+                if (!disabilityInfoService.isAuditPassed(userId)) {
+                    throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                            "该学员报考C5车型，但未通过残疾信息审核，请先审核其残疾信息");
+                }
+            }
+
+            // 校验特殊人群禁驾期
+            if (specialPersonRecordService.isInBanPeriod(userId)) {
+                java.time.LocalDate banEnd = specialPersonRecordService.getBanEndDate(userId);
+                String banMsg;
+                if (banEnd != null && banEnd.equals(java.time.LocalDate.MAX)) {
+                    banMsg = "该学员处于终生禁驾期，无法报名";
+                } else {
+                    banMsg = "该学员处于禁驾期（截止至" + banEnd + "），无法报名";
+                }
+                throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, banMsg);
+            }
+
             // 审核通过 → 更新状态 + 生成PDF
             user.setStatus(1);
             userService.updateById(user);
