@@ -25,25 +25,30 @@ public class FamiliarizationController {
     @Autowired
     private IFamiliarizationRecordService familiarizationRecordService;
 
+    @Autowired
+    private com.homework.driveman.mapper.FamiliarizationRecordMapper familiarizationRecordMapper;
+
     // ==================== 学员端接口 ====================
 
     @RequireRole(1)
     @Operation(summary = "申请合场",
-            description = "学员选择考试场次和用车类型（1-教练车/2-考试车），系统自动按 fee_standard 定价并生成待支付账单")
+            description = "学员选择考试场次和用车类型（1-教练车/2-考试车），系统自动按 fee_standard 定价并生成待支付账单。返回含教练姓名和学员姓名的合场详情")
     @PostMapping("/apply")
-    public JsonResult<FamiliarizationRecord> apply(@RequestParam Integer examSessionId,
-                                                    @RequestParam Integer carType,
-                                                    HttpServletRequest request) {
+    public JsonResult<Map<String, Object>> apply(@RequestParam Integer examSessionId,
+                                                  @RequestParam Integer carType,
+                                                  HttpServletRequest request) {
         CurrentUser currentUser = (CurrentUser) request.getAttribute("currentUser");
-        return JsonResult.ok(familiarizationRecordService.apply(currentUser.getUserId(), examSessionId, carType));
+        FamiliarizationRecord record = familiarizationRecordService.apply(currentUser.getUserId(), examSessionId, carType);
+        return JsonResult.ok(familiarizationRecordMapper.selectByIdWithDetails(record.getId()));
     }
 
     @RequireRole(1)
-    @Operation(summary = "支付合场", description = "学员支付自己的待支付合场记录（模拟支付）")
+    @Operation(summary = "支付合场", description = "学员支付自己的待支付合场记录（模拟支付）。返回含教练姓名和学员姓名的合场详情")
     @PutMapping("/{id}/pay")
-    public JsonResult<FamiliarizationRecord> pay(@PathVariable Integer id, HttpServletRequest request) {
+    public JsonResult<Map<String, Object>> pay(@PathVariable Integer id, HttpServletRequest request) {
         CurrentUser currentUser = (CurrentUser) request.getAttribute("currentUser");
-        return JsonResult.ok(familiarizationRecordService.pay(id, currentUser.getUserId()));
+        familiarizationRecordService.pay(id, currentUser.getUserId());
+        return JsonResult.ok(familiarizationRecordMapper.selectByIdWithDetails(id));
     }
 
     @RequireRole(1)
@@ -64,24 +69,27 @@ public class FamiliarizationController {
     }
 
     @RequireRole(3)
-    @Operation(summary = "安排合场时间", description = "管理员为已支付的合场记录安排具体时间，格式 yyyy-MM-dd HH:mm:ss")
+    @Operation(summary = "安排合场时间", description = "管理员为已支付的合场记录安排具体时间，格式 yyyy-MM-dd HH:mm:ss。返回含姓名的合场详情")
     @PutMapping("/{id}/schedule")
-    public JsonResult<FamiliarizationRecord> schedule(@PathVariable Integer id,
-                                                      @RequestParam String scheduledTime) {
-        return JsonResult.ok(familiarizationRecordService.schedule(id, scheduledTime));
+    public JsonResult<Map<String, Object>> schedule(@PathVariable Integer id,
+                                                     @RequestParam String scheduledTime) {
+        familiarizationRecordService.schedule(id, scheduledTime);
+        return JsonResult.ok(familiarizationRecordMapper.selectByIdWithDetails(id));
     }
 
     @RequireRole(3)
-    @Operation(summary = "合场完成", description = "标记合场已完成")
+    @Operation(summary = "合场完成", description = "标记合场已完成。返回含姓名的合场详情")
     @PutMapping("/{id}/complete")
-    public JsonResult<FamiliarizationRecord> complete(@PathVariable Integer id) {
-        return JsonResult.ok(familiarizationRecordService.complete(id));
+    public JsonResult<Map<String, Object>> complete(@PathVariable Integer id) {
+        familiarizationRecordService.complete(id);
+        return JsonResult.ok(familiarizationRecordMapper.selectByIdWithDetails(id));
     }
 
     @RequireRole(3)
-    @Operation(summary = "取消合场", description = "取消合场记录（已完成的不允许取消）")
+    @Operation(summary = "取消合场", description = "取消合场记录（已完成的不允许取消）。返回含姓名的合场详情")
     @PutMapping("/{id}/cancel")
-    public JsonResult<FamiliarizationRecord> cancel(@PathVariable Integer id) {
-        return JsonResult.ok(familiarizationRecordService.cancel(id));
+    public JsonResult<Map<String, Object>> cancel(@PathVariable Integer id) {
+        familiarizationRecordService.cancel(id);
+        return JsonResult.ok(familiarizationRecordMapper.selectByIdWithDetails(id));
     }
 }

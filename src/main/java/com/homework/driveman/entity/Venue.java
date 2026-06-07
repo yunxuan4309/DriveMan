@@ -35,6 +35,12 @@ public class Venue {
     /** 设施设备说明 */
     private String facilities;
 
+    /** 最大同时容纳车辆数（仅训练场地） */
+    private Integer maxVehicles;
+
+    /** 支持训练的车型，逗号分隔，NULL表示不限 */
+    private String supportedTypes;
+
     /** 状态: 1-启用, 0-停用 */
     private Integer status;
 

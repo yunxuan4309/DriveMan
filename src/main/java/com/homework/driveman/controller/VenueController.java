@@ -23,8 +23,8 @@ public class VenueController {
     @Autowired
     private IVenueService venueService;
 
-    @RequireRole(3)
-    @Operation(summary = "查询场地列表", description = "按场地类型筛选，venueType=1考场 2训练场地 3体检地点，不传则返回全部")
+    @RequireRole({2, 3})
+    @Operation(summary = "查询场地列表", description = "按场地类型筛选，venueType=1考场 2训练场地 3体检地点，不传则返回全部。教练可查询用于排班时选择训练场地")
     @GetMapping
     public JsonResult<List<Venue>> list(@RequestParam(required = false) Integer venueType) {
         List<Venue> list = venueService.lambdaQuery()
@@ -34,7 +34,7 @@ public class VenueController {
         return JsonResult.ok(list);
     }
 
-    @RequireRole(3)
+    @RequireRole({2, 3})
     @Operation(summary = "根据ID查询场地")
     @GetMapping("/{id}")
     public JsonResult<Venue> getById(@PathVariable Integer id) {

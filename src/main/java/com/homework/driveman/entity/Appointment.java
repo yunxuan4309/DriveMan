@@ -28,10 +28,13 @@ public class Appointment {
     /** 课程结束时间 */
     private LocalDateTime endTime;
 
-    /** 状态: 0-待确认, 1-已确认, 2-已拒绝, 3-已取消 */
+    /** 状态: 0-待确认, 1-已确认, 2-已拒绝, 3-已取消, 4-已完成 */
     private Integer status;
 
-    /** 取消原因 */
+    /** 关联排班ID */
+    private Integer scheduleId;
+
+    /** 取消原因/拒绝原因 */
     private String cancelReason;
 
     @TableField(fill = FieldFill.INSERT)

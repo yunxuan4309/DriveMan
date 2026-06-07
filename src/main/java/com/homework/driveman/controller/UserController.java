@@ -2,6 +2,7 @@ package com.homework.driveman.controller;
 
 import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
+import com.homework.driveman.service.IDisabilityInfoService;
 import com.homework.driveman.service.IUserService;
 import com.homework.driveman.utils.CurrentUser;
 import com.homework.driveman.web.JsonResult;
@@ -25,6 +26,9 @@ public class UserController {
     @Autowired
     private IUserService userService;
 
+    @Autowired
+    private IDisabilityInfoService disabilityInfoService;
+
     @Operation(summary = "获取当前登录用户信息",
             description = "从 Token 解析当前用户，适用于所有角色")
     @GetMapping("/me")
@@ -44,9 +48,9 @@ public class UserController {
         return JsonResult.ok();
     }
 
-    @Operation(summary = "完善个人信息", description = "学员更新报名资料（姓名、身份证、手机号、地址、车型等）")
+    @Operation(summary = "完善个人信息", description = "学员更新报名资料（姓名、身份证、手机号、地址、车型等）。选择C5车型时，需先通过残疾信息审核。")
     @PutMapping("/{id}/profile")
-    public JsonResult<Void> updateProfile(@PathVariable Integer id, 
+    public JsonResult<Void> updateProfile(@PathVariable Integer id,
                                           @RequestBody User user,
                                           HttpServletRequest request) {
         // 验证当前用户只能修改自己的信息
@@ -54,7 +58,15 @@ public class UserController {
         if (!currentUser.getUserId().equals(id)) {
             throw new ServiceException(ServiceCode.ERROR_FORBIDDEN, "无权修改他人信息");
         }
-        
+
+        // 如果选择C5车型，校验是否已通过残疾信息审核
+        if ("C5".equals(user.getLicenseType())) {
+            if (!disabilityInfoService.isAuditPassed(id)) {
+                throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                        "报考C5车型需先提交并通过残疾信息审核，请先前往 /disability-info/submit 提交残疾信息");
+            }
+        }
+
         userService.updateProfile(id, user);
         return JsonResult.ok();
     }
