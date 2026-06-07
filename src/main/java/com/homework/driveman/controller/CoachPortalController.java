@@ -1,6 +1,7 @@
 package com.homework.driveman.controller;
 
 import com.homework.driveman.config.RequireRole;
+import com.homework.driveman.dto.UpdateTimeSlotsDTO;
 import com.homework.driveman.entity.Appointment;
 import com.homework.driveman.entity.Coach;
 import com.homework.driveman.entity.CoachApplication;
@@ -23,15 +24,15 @@ import com.homework.driveman.web.ServiceCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import com.homework.driveman.dto.TimeSlotDTO;
+import com.homework.driveman.dto.CoachProfileUpdateDTO;
+import com.homework.driveman.dto.ChangePasswordDTO;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -435,5 +436,68 @@ public class CoachPortalController {
     public JsonResult<List<Map<String, Object>>> getRetakeTrainings(HttpServletRequest request) {
         Integer coachId = resolveCoachId(request);
         return JsonResult.ok(retakeTrainingService.listByCoach(coachId));
+    }
+
+    // ==================== 12. 可预约时间段结构化管理 ====================
+
+    @Operation(summary = "获取可预约时间段列表")
+    @GetMapping("/time-slots")
+    public JsonResult<List<TimeSlotDTO>> getTimeSlots(HttpServletRequest request) {
+        Integer coachId = resolveCoachId(request);
+        return JsonResult.ok(coachPortalService.getTimeSlots(coachId));
+    }
+
+    @Operation(summary = "批量设置可预约时间段（全量替换）")
+    @PutMapping("/time-slots")
+    public JsonResult<Void> setTimeSlots(@RequestBody @Valid UpdateTimeSlotsDTO dto,
+                                         HttpServletRequest request) {
+        Integer coachId = resolveCoachId(request);
+        coachPortalService.setTimeSlots(coachId, dto.getTimeSlots());
+        return JsonResult.ok();
+    }
+
+    @Operation(summary = "添加一个可预约时间段")
+    @PostMapping("/time-slots")
+    public JsonResult<Void> addTimeSlot(@RequestBody @Valid TimeSlotDTO slot,
+                                        HttpServletRequest request) {
+        Integer coachId = resolveCoachId(request);
+        coachPortalService.addTimeSlot(coachId, slot);
+        return JsonResult.ok();
+    }
+
+    @Operation(summary = "删除一个可预约时间段")
+    @DeleteMapping("/time-slots")
+    public JsonResult<Void> removeTimeSlot(@RequestBody @Valid TimeSlotDTO slot,
+                                           HttpServletRequest request) {
+        Integer coachId = resolveCoachId(request);
+        coachPortalService.removeTimeSlot(coachId, slot);
+        return JsonResult.ok();
+    }
+
+    // ==================== 13. 个人信息管理 ====================
+
+    @Operation(summary = "获取个人信息")
+    @GetMapping("/profile")
+    public JsonResult<Map<String, Object>> getProfile(HttpServletRequest request) {
+        Integer coachId = resolveCoachId(request);
+        return JsonResult.ok(coachPortalService.getProfile(coachId));
+    }
+
+    @Operation(summary = "更新个人信息")
+    @PutMapping("/profile")
+    public JsonResult<Void> updateProfile(@RequestBody @Valid CoachProfileUpdateDTO dto,
+                                          HttpServletRequest request) {
+        Integer coachId = resolveCoachId(request);
+        coachPortalService.updateProfile(coachId, dto);
+        return JsonResult.ok();
+    }
+
+    @Operation(summary = "修改密码")
+    @PutMapping("/password")
+    public JsonResult<Void> changePassword(@RequestBody @Valid ChangePasswordDTO dto,
+                                           HttpServletRequest request) {
+        Integer coachId = resolveCoachId(request);
+        coachPortalService.changePassword(coachId, dto);
+        return JsonResult.ok();
     }
 }

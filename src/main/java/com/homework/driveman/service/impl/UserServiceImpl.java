@@ -4,17 +4,26 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
+import com.homework.driveman.mapper.CoachMapper;
 import com.homework.driveman.mapper.UserMapper;
 import com.homework.driveman.service.IUserService;
 import com.homework.driveman.web.ServiceCode;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import com.homework.driveman.dto.CoachRegisterDTO;
+import com.homework.driveman.entity.Coach;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
 
 /** 用户业务实现 */
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IUserService {
-
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+
+    @Autowired
+    private CoachMapper coachMapper;
 
     @Override
     public void register(User user) {
@@ -81,5 +90,49 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
         // 更新到数据库
         updateById(updateUser);
+    }
+
+    @Override
+    @Transactional
+    public void coachRegister(CoachRegisterDTO dto) {
+        // 校验唯一性
+        Long usernameCount = count(new LambdaQueryWrapper<User>()
+                .eq(User::getUsername, dto.getUsername()));
+        if (usernameCount > 0) {
+            throw new ServiceException(ServiceCode.ERROR_CONFLICT, "用户名已存在");
+        }
+        Long phoneCount = count(new LambdaQueryWrapper<User>()
+                .eq(User::getPhone, dto.getPhone()));
+        if (phoneCount > 0) {
+            throw new ServiceException(ServiceCode.ERROR_CONFLICT, "手机号已被注册");
+        }
+        Long idCardCount = count(new LambdaQueryWrapper<User>()
+                .eq(User::getIdCard, dto.getIdCard()));
+        if (idCardCount > 0) {
+            throw new ServiceException(ServiceCode.ERROR_CONFLICT, "身份证号已被注册");
+        }
+
+        // 创建 User
+        User user = new User();
+        user.setRole(2);
+        user.setUsername(dto.getUsername());
+        user.setPassword(encoder.encode(dto.getPassword()));
+        user.setRealName(dto.getRealName());
+        user.setIdCard(dto.getIdCard());
+        user.setPhone(dto.getPhone());
+        user.setLicenseType(dto.getVehicleType());
+        user.setAvatar(dto.getAvatar());
+        user.setStatus(0); // 待审核
+        save(user);
+
+        // 创建 Coach
+        Coach coach = new Coach();
+        coach.setUserId(user.getUserId());
+        coach.setCoachYears(dto.getCoachYears() != null ? dto.getCoachYears() : 0);
+        coach.setVehicleType(dto.getVehicleType());
+        coach.setRating(new BigDecimal("5.0"));
+        // 如果有证书URL，需要 Coach 实体有 certificateUrl 字段，取消下行注释
+        // coach.setCertificateUrl(dto.getCertificateUrl());
+        coachMapper.insert(coach);
     }
 }
