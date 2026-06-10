@@ -124,20 +124,23 @@ public class PaymentRecordServiceImpl implements IPaymentRecordService {
     }
 
     @Override
-    public Map<String, Object> getRevenueSummary() {
+    public Map<String, Object> getRevenueSummary(Integer year) {
         // 月度趋势
-        List<Map<String, Object>> monthlyRows = paymentRecordMapper.selectMonthlyRevenue();
+        List<Map<String, Object>> monthlyRows = paymentRecordMapper.selectMonthlyRevenue(year);
 
         List<String> months = new ArrayList<>();
         List<Double> monthlyValues = new ArrayList<>();
 
-        // 填充近12个月（无收入的月份补0）
+        // 填充12个月（无收入的月份补0）
         Set<String> monthSet = new HashSet<>();
         for (Map<String, Object> row : monthlyRows) {
             monthSet.add(row.get("month").toString());
         }
+        LocalDateTime baseTime = (year != null)
+                ? LocalDateTime.of(year, 1, 1, 0, 0)
+                : LocalDateTime.now();
         for (int i = 11; i >= 0; i--) {
-            String month = LocalDateTime.now().minusMonths(i).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
+            String month = baseTime.minusMonths(i).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
             months.add(month);
             if (monthSet.contains(month)) {
                 monthlyRows.stream()
@@ -149,16 +152,17 @@ public class PaymentRecordServiceImpl implements IPaymentRecordService {
             }
         }
 
+        String monthlyTitle = (year != null) ? year + "年收入趋势" : "近12个月收入趋势";
         Map<String, Object> monthlyChart = new LinkedHashMap<>();
-        monthlyChart.put("title", Map.of("text", "近12个月收入趋势"));
+        monthlyChart.put("title", Map.of("text", monthlyTitle));
         monthlyChart.put("xAxis", Map.of("type", "category", "data", months));
         monthlyChart.put("yAxis", Map.of("type", "value"));
         monthlyChart.put("series", List.of(Map.of(
                 "name", "收入", "type", "bar", "data", monthlyValues
         )));
 
-        // 当月收入来源分布
-        List<Map<String, Object>> bizRows = paymentRecordMapper.selectRevenueByBizType();
+        // 收入来源分布
+        List<Map<String, Object>> bizRows = paymentRecordMapper.selectRevenueByBizType(year);
         List<Map<String, Object>> bizPieData = new ArrayList<>();
         for (Map<String, Object> row : bizRows) {
             String bizType = row.get("biz_type").toString();
@@ -175,8 +179,9 @@ public class PaymentRecordServiceImpl implements IPaymentRecordService {
             bizPieData.add(Map.of("name", "暂无数据", "value", 1));
         }
 
+        String pieTitle = (year != null) ? year + "年收入来源" : "当月收入来源";
         Map<String, Object> bizTypeChart = new LinkedHashMap<>();
-        bizTypeChart.put("title", Map.of("text", "当月收入来源", "left", "center"));
+        bizTypeChart.put("title", Map.of("text", pieTitle, "left", "center"));
         bizTypeChart.put("series", List.of(Map.of(
                 "name", "收入来源", "type", "pie", "radius", "50%", "data", bizPieData
         )));

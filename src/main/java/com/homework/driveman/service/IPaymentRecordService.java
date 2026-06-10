@@ -32,6 +32,6 @@ public interface IPaymentRecordService {
     /** 欠费清单（待支付 + 学员信息） */
     List<Map<String, Object>> listOutstanding();
 
-    /** 收入看板数据 */
-    Map<String, Object> getRevenueSummary();
+    /** 收入看板数据（支持按年份筛选；不传时为近12月+当月） */
+    Map<String, Object> getRevenueSummary(Integer year);
 }

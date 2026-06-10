@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Select;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 /** 考试报名表 Mapper */
 @Mapper
 public interface ExamRegistrationMapper extends BaseMapper<ExamRegistration> {
@@ -27,8 +28,9 @@ public interface ExamRegistrationMapper extends BaseMapper<ExamRegistration> {
             "WHERE student_id = #{studentId} AND pass_status = 1 AND is_deleted = 0")
     Set<Integer> findPassedSubjectsByStudent(@Param("studentId") Integer studentId);
 
-    /** 各科目月度考试通过率趋势 */
-    @Select("SELECT " +
+    /** 各科目月度考试通过率趋势（支持按年份和科目筛选） */
+    @Select("<script>" +
+            "SELECT " +
             "  DATE_FORMAT(s.exam_date, '%Y-%m') AS month, " +
             "  s.subject, " +
             "  COUNT(*) AS total, " +
@@ -37,7 +39,11 @@ public interface ExamRegistrationMapper extends BaseMapper<ExamRegistration> {
             "FROM exam_registration er " +
             "JOIN exam_session s ON er.session_id = s.id AND s.is_deleted = 0 " +
             "WHERE er.pass_status IS NOT NULL AND er.is_deleted = 0 " +
+            "  <if test='year != null'>AND YEAR(s.exam_date) = #{year}</if> " +
+            "  <if test='subject != null'>AND s.subject = #{subject}</if> " +
             "GROUP BY DATE_FORMAT(s.exam_date, '%Y-%m'), s.subject " +
-            "ORDER BY month ASC, s.subject ASC")
-    List<Map<String, Object>> selectMonthlyPassRate();
+            "ORDER BY month ASC, s.subject ASC" +
+            "</script>")
+    List<Map<String, Object>> selectMonthlyPassRate(@Param("year") Integer year,
+                                                     @Param("subject") Integer subject);
 }

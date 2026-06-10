@@ -8,6 +8,7 @@ import com.homework.driveman.entity.FeeStandard;
 import com.homework.driveman.entity.LicenseConfig;
 import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
+import com.homework.driveman.mapper.ExamRegistrationMapper;
 import com.homework.driveman.mapper.LicenseConfigMapper;
 import com.homework.driveman.service.IConfigService;
 import com.homework.driveman.mapper.TrainingRecordMapper;
@@ -31,6 +32,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 考试报名控制器 — 学员报名考试、管理员审核、录入成绩
@@ -69,6 +71,9 @@ public class ExamRegistrationController {
 
     @Autowired
     private IConfigService configService;
+
+    @Autowired
+    private ExamRegistrationMapper examRegistrationMapper;
 
     /** 从 config 表读取合格分数线，默认 90 */
     private int getPassScore() {
@@ -126,7 +131,14 @@ public class ExamRegistrationController {
             }
         }
 
-        // ③ 检测是否为补考：该学员同一科目是否有不合格记录
+        // ③ 检测该科目是否已通过（通过后不可再次报名）
+        Set<Integer> passedSubjects = examRegistrationMapper.findPassedSubjectsByStudent(studentId);
+        if (passedSubjects.contains(session.getSubject())) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                    "您已通过科目" + session.getSubject() + "，无需重复报名");
+        }
+
+        // ④ 检测是否为补考：该学员同一科目是否有不合格记录
         boolean isRetake = examRegistrationService.lambdaQuery()
                 .eq(ExamRegistration::getStudentId, studentId)
                 .eq(ExamRegistration::getSubject, session.getSubject())
@@ -232,11 +244,13 @@ public class ExamRegistrationController {
 
     @RequireRole(3)
     @Operation(summary = "分页查询考试报名记录",
-            description = "返回报名记录及关联的学员姓名、考试日期、地点等信息")
+            description = "支持按 status 和学员姓名搜索，返回报名记录及关联的学员姓名、考试日期、地点等信息")
     @GetMapping
     public JsonResult<Page<Map<String, Object>>> list(@RequestParam(defaultValue = "1") int page,
-                                                       @RequestParam(defaultValue = "10") int size) {
-        return JsonResult.ok(examRegistrationService.pageWithDetails(new Page<>(page, size)));
+                                                       @RequestParam(defaultValue = "10") int size,
+                                                       @RequestParam(required = false) Integer status,
+                                                       @RequestParam(required = false) String keyword) {
+        return JsonResult.ok(examRegistrationService.pageWithDetails(new Page<>(page, size), status, keyword));
     }
 
     @Operation(summary = "根据学员ID查询其考试报名记录",

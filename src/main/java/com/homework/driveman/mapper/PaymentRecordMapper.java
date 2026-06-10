@@ -2,6 +2,7 @@ package com.homework.driveman.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.homework.driveman.entity.PaymentRecord;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.springframework.stereotype.Repository;
 
@@ -12,22 +13,28 @@ import java.util.Map;
 @Repository
 public interface PaymentRecordMapper extends BaseMapper<PaymentRecord> {
 
-    /** 近12个月月度收入聚合（已支付） */
-    @Select("SELECT DATE_FORMAT(pay_time, '%Y-%m') AS month, SUM(amount) AS total " +
+    /** 近12个月月度收入聚合（已支付，支持按年份筛选） */
+    @Select("<script>" +
+            "SELECT DATE_FORMAT(pay_time, '%Y-%m') AS month, SUM(amount) AS total " +
             "FROM payment_record " +
             "WHERE status = 1 AND is_deleted = 0 " +
-            "  AND pay_time >= DATE_SUB(NOW(), INTERVAL 12 MONTH) " +
+            "  <if test='year != null'>AND YEAR(pay_time) = #{year}</if> " +
+            "  <if test='year == null'>AND pay_time >= DATE_SUB(NOW(), INTERVAL 12 MONTH)</if> " +
             "GROUP BY DATE_FORMAT(pay_time, '%Y-%m') " +
-            "ORDER BY month ASC")
-    List<Map<String, Object>> selectMonthlyRevenue();
+            "ORDER BY month ASC" +
+            "</script>")
+    List<Map<String, Object>> selectMonthlyRevenue(@Param("year") Integer year);
 
-    /** 当月收入按业务类型分布 */
-    @Select("SELECT biz_type, SUM(amount) AS total, COUNT(*) AS count " +
+    /** 收入按业务类型分布（支持按年份筛选；不传年份时为当月） */
+    @Select("<script>" +
+            "SELECT biz_type, SUM(amount) AS total, COUNT(*) AS count " +
             "FROM payment_record " +
             "WHERE status = 1 AND is_deleted = 0 " +
-            "  AND YEAR(pay_time) = YEAR(NOW()) AND MONTH(pay_time) = MONTH(NOW()) " +
-            "GROUP BY biz_type")
-    List<Map<String, Object>> selectRevenueByBizType();
+            "  <if test='year != null'>AND YEAR(pay_time) = #{year}</if> " +
+            "  <if test='year == null'>AND YEAR(pay_time) = YEAR(NOW()) AND MONTH(pay_time) = MONTH(NOW())</if> " +
+            "GROUP BY biz_type" +
+            "</script>")
+    List<Map<String, Object>> selectRevenueByBizType(@Param("year") Integer year);
 
     /** 总体收支汇总 */
     @Select("SELECT " +

@@ -2,6 +2,7 @@ package com.homework.driveman.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.homework.driveman.entity.Coach;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.springframework.stereotype.Repository;
 
@@ -12,8 +13,9 @@ import java.util.Map;
 @Repository
 public interface CoachMapper extends BaseMapper<Coach> {
 
-    /** 教练效能：带教学员数 + 学员考试通过率 + 评分 + 执教年限 */
-    @Select("SELECT " +
+    /** 教练效能：带教学员数 + 学员考试通过率 + 评分 + 执教年限（支持按车型和 TopN 筛选） */
+    @Select("<script>" +
+            "SELECT " +
             "  u.real_name AS coach_name, " +
             "  c.rating, " +
             "  c.coach_years, " +
@@ -29,7 +31,11 @@ public interface CoachMapper extends BaseMapper<Coach> {
             "LEFT JOIN student_coach sc ON c.coach_id = sc.coach_id AND sc.status = 1 AND sc.is_deleted = 0 " +
             "LEFT JOIN exam_registration er ON sc.student_id = er.student_id AND er.is_deleted = 0 " +
             "WHERE c.is_deleted = 0 " +
+            "  <if test='licenseType != null and licenseType != \"\"'>AND FIND_IN_SET(#{licenseType}, c.vehicle_type)</if> " +
             "GROUP BY c.coach_id " +
-            "ORDER BY pass_rate DESC")
-    List<Map<String, Object>> selectCoachEffectiveness();
+            "ORDER BY pass_rate DESC " +
+            "  <if test='topN != null'>LIMIT #{topN}</if> " +
+            "</script>")
+    List<Map<String, Object>> selectCoachEffectiveness(@Param("licenseType") String licenseType,
+                                                        @Param("topN") Integer topN);
 }

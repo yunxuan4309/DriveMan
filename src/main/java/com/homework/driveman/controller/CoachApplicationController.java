@@ -2,6 +2,7 @@ package com.homework.driveman.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.Coach;
 import com.homework.driveman.entity.CoachApplication;
@@ -12,6 +13,7 @@ import com.homework.driveman.mapper.CoachApplicationMapper;
 import com.homework.driveman.mapper.CoachMapper;
 import com.homework.driveman.mapper.StudentCoachMapper;
 import com.homework.driveman.mapper.UserMapper;
+import com.homework.driveman.service.ICoachApplicationService;
 import com.homework.driveman.web.JsonResult;
 import com.homework.driveman.web.ServiceCode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -46,6 +48,9 @@ public class  CoachApplicationController {
 
     @Autowired
     private CoachMapper coachMapper;
+
+    @Autowired
+    private ICoachApplicationService coachApplicationService;
 
     @RequireRole(1)
     @Operation(summary = "学员提交教练选择申请（含更换教练）",
@@ -186,6 +191,17 @@ public class  CoachApplicationController {
             return map;
         }).collect(Collectors.toList());
         return JsonResult.ok(result);
+    }
+
+    @RequireRole(3)
+    @Operation(summary = "分页查询教练申请记录",
+            description = "支持按 status 和学员姓名搜索，返回申请记录及学员/教练详情")
+    @GetMapping
+    public JsonResult<Page<Map<String, Object>>> list(@RequestParam(defaultValue = "1") int page,
+                                                       @RequestParam(defaultValue = "10") int size,
+                                                       @RequestParam(required = false) Integer status,
+                                                       @RequestParam(required = false) String keyword) {
+        return JsonResult.ok(coachApplicationService.pageWithDetails(new Page<>(page, size), status, keyword));
     }
 
     @Operation(summary = "查询某个学员的所有申请记录",

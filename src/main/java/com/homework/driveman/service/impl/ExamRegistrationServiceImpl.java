@@ -1,5 +1,6 @@
 package com.homework.driveman.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.homework.driveman.entity.ExamRegistration;
@@ -30,8 +31,30 @@ public class ExamRegistrationServiceImpl extends ServiceImpl<ExamRegistrationMap
     private ExamSessionMapper examSessionMapper;
 
     @Override
-    public Page<Map<String, Object>> pageWithDetails(Page<ExamRegistration> page) {
-        Page<ExamRegistration> rawPage = baseMapper.selectPage(page, null);
+    public Page<Map<String, Object>> pageWithDetails(Page<ExamRegistration> page, Integer status, String keyword) {
+        LambdaQueryWrapper<ExamRegistration> wrapper = new LambdaQueryWrapper<>();
+
+        // 按状态筛选
+        if (status != null) {
+            wrapper.eq(ExamRegistration::getStatus, status);
+        }
+
+        // 按学员姓名模糊搜索
+        if (keyword != null && !keyword.isEmpty()) {
+            List<Integer> matchedUserIds = userMapper.selectList(
+                    new LambdaQueryWrapper<User>()
+                            .like(User::getRealName, keyword)
+                            .select(User::getUserId)
+            ).stream().map(User::getUserId).toList();
+            if (matchedUserIds.isEmpty()) {
+                // 没有匹配的学员，返回空页
+                return new Page<>(page.getCurrent(), page.getSize(), 0);
+            }
+            wrapper.in(ExamRegistration::getStudentId, matchedUserIds);
+        }
+
+        wrapper.orderByDesc(ExamRegistration::getApplyTime);
+        Page<ExamRegistration> rawPage = baseMapper.selectPage(page, wrapper);
 
         List<ExamRegistration> records = rawPage.getRecords();
         if (records.isEmpty()) {

@@ -33,20 +33,22 @@ public class StatisticsServiceImpl implements IStatisticsService {
     private IPaymentRecordService paymentRecordService;
 
     @Override
-    public Map<String, Object> getRegistrationTrend() {
-        // 查询最近 30 天每天的学员报名数
-        LocalDate thirtyDaysAgo = LocalDate.now().minusDays(30);
+    public Map<String, Object> getRegistrationTrend(LocalDate startDate, LocalDate endDate) {
+        // 默认近30天
+        if (startDate == null) startDate = LocalDate.now().minusDays(30);
+        if (endDate == null) endDate = LocalDate.now();
 
         QueryWrapper<User> wrapper = new QueryWrapper<>();
         wrapper.select("DATE(create_time) AS date", "COUNT(*) AS count")
                 .eq("role", 1)
                 .eq("is_deleted", 0)
-                .ge("create_time", thirtyDaysAgo)
+                .ge("create_time", startDate.atStartOfDay())
+                .le("create_time", endDate.plusDays(1).atStartOfDay())
                 .groupBy("DATE(create_time)")
                 .orderByAsc("DATE(create_time)");
         List<Map<String, Object>> rows = userMapper.selectMaps(wrapper);
 
-        // 填充完整 30 天（无数据的日期补 0）
+        // 填充完整日期范围（无数据的日期补 0）
         Set<String> dateSet = rows.stream()
                 .map(r -> r.get("date").toString())
                 .collect(Collectors.toSet());
@@ -54,8 +56,9 @@ public class StatisticsServiceImpl implements IStatisticsService {
         List<String> categories = new ArrayList<>();
         List<Integer> values = new ArrayList<>();
 
-        for (int i = 29; i >= 0; i--) {
-            String date = thirtyDaysAgo.plusDays(i).toString();
+        long days = endDate.toEpochDay() - startDate.toEpochDay();
+        for (int i = 0; i <= days; i++) {
+            String date = startDate.plusDays(i).toString();
             categories.add(date);
             if (dateSet.contains(date)) {
                 rows.stream()
@@ -68,7 +71,7 @@ public class StatisticsServiceImpl implements IStatisticsService {
         }
 
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("title", Map.of("text", "近30天报名趋势"));
+        result.put("title", Map.of("text", "报名趋势"));
         result.put("xAxis", Map.of("type", "category", "data", categories));
         result.put("yAxis", Map.of("type", "value", "minInterval", 1));
         result.put("series", List.of(Map.of(
@@ -81,9 +84,8 @@ public class StatisticsServiceImpl implements IStatisticsService {
     }
 
     @Override
-    public Map<String, Object> getPassRate() {
-        // 各科目月度考试通过率趋势
-        List<Map<String, Object>> rows = examRegistrationMapper.selectMonthlyPassRate();
+    public Map<String, Object> getPassRate(Integer year, Integer subjectFilter) {
+        List<Map<String, Object>> rows = examRegistrationMapper.selectMonthlyPassRate(year, subjectFilter);
 
         // 提取所有月份（去重排序）
         Set<String> monthSet = new LinkedHashSet<>();
@@ -143,9 +145,8 @@ public class StatisticsServiceImpl implements IStatisticsService {
     }
 
     @Override
-    public Map<String, Object> getCoachWorkload() {
-        // 教练效能：考试通过率排名、评分、带教学员数、执教年限
-        List<Map<String, Object>> rows = coachMapper.selectCoachEffectiveness();
+    public Map<String, Object> getCoachWorkload(String licenseType, Integer topN) {
+        List<Map<String, Object>> rows = coachMapper.selectCoachEffectiveness(licenseType, topN);
 
         List<String> names = new ArrayList<>();
         List<Double> passRates = new ArrayList<>();
@@ -186,7 +187,7 @@ public class StatisticsServiceImpl implements IStatisticsService {
     }
 
     @Override
-    public Map<String, Object> getRevenueSummary() {
-        return paymentRecordService.getRevenueSummary();
+    public Map<String, Object> getRevenueSummary(Integer year) {
+        return paymentRecordService.getRevenueSummary(year);
     }
 }

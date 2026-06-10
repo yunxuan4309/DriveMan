@@ -1,5 +1,6 @@
 package com.homework.driveman.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.Coach;
 import com.homework.driveman.entity.File;
@@ -98,12 +99,14 @@ public class FileController {
 
     // ==================== 查询 ====================
 
-    @Operation(summary = "查询当前登录用户自己的文件",
+    @Operation(summary = "分页查询当前登录用户自己的文件",
             description = "支持多维度过滤：bizType（业务分类）、fileType（文件格式）、keyword（文件名搜索）\n" +
                     "bizType 可选值: user_profile / enrollment / exam_ticket / registration_form / " +
                     "training_record / physical_exam / license_upgrade / coach_qualification")
     @GetMapping("/my")
-    public JsonResult<List<File>> listMyFiles(
+    public JsonResult<Page<File>> listMyFiles(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) @Parameter(description = "业务类型过滤") String bizType,
             @RequestParam(required = false) @Parameter(description = "文件分类过滤（旧字段）") String fileType,
             @RequestParam(required = false) @Parameter(description = "文件名关键词搜索") String keyword,
@@ -121,7 +124,7 @@ public class FileController {
         if (keyword != null && !keyword.isEmpty()) {
             query.like(File::getFileName, keyword);
         }
-        return JsonResult.ok(query.list());
+        return JsonResult.ok(query.page(new Page<>(page, size)));
     }
 
     @Operation(summary = "按业务查询附件")
@@ -158,61 +161,16 @@ public class FileController {
         return JsonResult.ok(file);
     }
 
-    @Operation(summary = "管理员按条件查询文件",
-            description = "支持按真实姓名和角色过滤（至少传一个条件），返回文件列表附带用户姓名")
+    @Operation(summary = "管理员分页查询文件",
+            description = "支持按真实姓名和角色过滤，返回分页文件列表附带用户姓名")
     @RequireRole(3)
     @GetMapping("/admin/query")
-    public JsonResult<List<Map<String, Object>>> adminQuery(
+    public JsonResult<Page<Map<String, Object>>> adminQuery(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) @Parameter(description = "用户真实姓名（模糊搜索）") String realName,
             @RequestParam(required = false) @Parameter(description = "角色: 1-学员, 2-教练") Integer role) {
-        // 至少需要一个筛选条件
-        if (realName == null && role == null) {
-            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "请至少输入姓名或选择角色进行查询");
-        }
-
-        // 1. 按条件查用户 ID 列表
-        var userQuery = userService.lambdaQuery();
-        if (realName != null && !realName.isEmpty()) {
-            userQuery.like(User::getRealName, realName);
-        }
-        if (role != null) {
-            userQuery.eq(User::getRole, role);
-        }
-        List<User> matchedUsers = userQuery.list();
-        if (matchedUsers.isEmpty()) {
-            return JsonResult.ok(List.of());
-        }
-        List<Integer> userIds = matchedUsers.stream().map(User::getUserId).toList();
-
-        // 2. 查这些用户的文件
-        List<File> files = fileService.lambdaQuery()
-                .in(File::getUserId, userIds)
-                .orderByDesc(File::getCreateTime)
-                .list();
-
-        // 3. 构建 userId -> realName 映射
-        Map<Integer, String> nameMap = matchedUsers.stream()
-                .collect(java.util.stream.Collectors.toMap(User::getUserId, User::getRealName));
-
-        // 4. 组装返回（文件信息 + 用户姓名）
-        List<Map<String, Object>> result = files.stream().map(f -> {
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("id", f.getId());
-            m.put("userId", f.getUserId());
-            m.put("realName", nameMap.get(f.getUserId()));
-            m.put("fileName", f.getFileName());
-            m.put("filePath", f.getFilePath());
-            m.put("fileSize", f.getFileSize());
-            m.put("mimeType", f.getMimeType());
-            m.put("fileType", f.getFileType());
-            m.put("bizType", f.getBizType());
-            m.put("bizId", f.getBizId());
-            m.put("uploadTime", f.getUploadTime());
-            m.put("createTime", f.getCreateTime());
-            return m;
-        }).toList();
-
-        return JsonResult.ok(result);
+        return JsonResult.ok(fileService.pageAdminQuery(new Page<>(page, size), realName, role));
     }
 
     // ==================== 下载 / 预览 ====================

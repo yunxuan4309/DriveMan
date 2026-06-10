@@ -1,8 +1,11 @@
 package com.homework.driveman.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.homework.driveman.entity.File;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Map;
 
 /** 文件业务接口 — 上传/下载/查询/删除 */
 public interface IFileService extends IService<File> {
@@ -58,4 +61,13 @@ public interface IFileService extends IService<File> {
      * @return true=有权限
      */
     boolean hasAccess(File file, Integer userId, Integer userRole);
+
+    /**
+     * 管理员分页查询文件，附带用户姓名
+     * @param page     分页参数
+     * @param realName 可选，用户真实姓名（模糊搜索）
+     * @param role     可选，角色: 1-学员, 2-教练
+     * @return 分页结果，含文件信息和上传者真实姓名
+     */
+    Page<Map<String, Object>> pageAdminQuery(Page<File> page, String realName, Integer role);
 }

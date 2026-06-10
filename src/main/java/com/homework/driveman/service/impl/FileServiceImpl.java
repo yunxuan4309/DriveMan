@@ -1,12 +1,17 @@
 package com.homework.driveman.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.homework.driveman.entity.File;
+import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
 import com.homework.driveman.mapper.FileMapper;
+import com.homework.driveman.mapper.UserMapper;
 import com.homework.driveman.service.IFileService;
 import com.homework.driveman.web.ServiceCode;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -17,8 +22,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 文件业务实现 — 本地磁盘存储
@@ -49,6 +57,9 @@ public class FileServiceImpl extends ServiceImpl<FileMapper, File> implements IF
 
     @Value("${drive.upload.path:./upload-files}")
     private String uploadPath;
+
+    @Autowired
+    private UserMapper userMapper;
 
     @Override
     public File upload(Integer userId, MultipartFile multipartFile, String fileType,
@@ -173,5 +184,50 @@ public class FileServiceImpl extends ServiceImpl<FileMapper, File> implements IF
         if (currentUserRole == 3) return true;
         // 普通用户只能访问自己的文件
         return currentUserId.equals(file.getUserId());
+    }
+
+    @Override
+    public Page<Map<String, Object>> pageAdminQuery(Page<File> page, String realName, Integer role) {
+        LambdaQueryWrapper<User> userFilter = new LambdaQueryWrapper<>();
+        if (realName != null && !realName.isEmpty()) {
+            userFilter.like(User::getRealName, realName);
+        }
+        if (role != null) {
+            userFilter.eq(User::getRole, role);
+        }
+        List<User> matchedUsers = userMapper.selectList(userFilter);
+        if (matchedUsers.isEmpty()) {
+            return new Page<>(page.getCurrent(), page.getSize(), 0);
+        }
+        List<Integer> userIds = matchedUsers.stream().map(User::getUserId).toList();
+
+        LambdaQueryWrapper<File> fileWrapper = new LambdaQueryWrapper<File>()
+                .in(File::getUserId, userIds)
+                .orderByDesc(File::getCreateTime);
+        Page<File> filePage = baseMapper.selectPage(page, fileWrapper);
+
+        Map<Integer, String> nameMap = matchedUsers.stream()
+                .collect(Collectors.toMap(User::getUserId, User::getRealName));
+
+        List<Map<String, Object>> result = filePage.getRecords().stream().map(f -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", f.getId());
+            m.put("userId", f.getUserId());
+            m.put("realName", nameMap.get(f.getUserId()));
+            m.put("fileName", f.getFileName());
+            m.put("filePath", f.getFilePath());
+            m.put("fileSize", f.getFileSize());
+            m.put("mimeType", f.getMimeType());
+            m.put("fileType", f.getFileType());
+            m.put("bizType", f.getBizType());
+            m.put("bizId", f.getBizId());
+            m.put("uploadTime", f.getUploadTime());
+            m.put("createTime", f.getCreateTime());
+            return m;
+        }).toList();
+
+        Page<Map<String, Object>> resultPage = new Page<>(filePage.getCurrent(), filePage.getSize(), filePage.getTotal());
+        resultPage.setRecords(result);
+        return resultPage;
     }
 }

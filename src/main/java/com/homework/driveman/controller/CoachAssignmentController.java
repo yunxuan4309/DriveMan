@@ -1,5 +1,7 @@
 package com.homework.driveman.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.Coach;
 import com.homework.driveman.entity.StudentCoach;
@@ -19,8 +21,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -83,34 +87,96 @@ public class CoachAssignmentController {
     }
 
     @RequireRole(3)
-    @Operation(summary = "查询所有绑定关系",
-            description = "返回绑定记录，含学员姓名和教练姓名")
+    @Operation(summary = "分页查询绑定关系",
+            description = "支持按学员姓名和教练姓名搜索，返回绑定记录含学员姓名和教练姓名")
     @GetMapping
-    public JsonResult<List<Map<String, Object>>> listAll() {
-        List<StudentCoach> list = studentCoachMapper.selectList(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<StudentCoach>()
-                        .eq(StudentCoach::getStatus, 1));
+    public JsonResult<Page<Map<String, Object>>> listAll(@RequestParam(defaultValue = "1") int page,
+                                                          @RequestParam(defaultValue = "10") int size,
+                                                          @RequestParam(required = false) String studentName,
+                                                          @RequestParam(required = false) String coachName) {
+        LambdaQueryWrapper<StudentCoach> wrapper = new LambdaQueryWrapper<StudentCoach>()
+                .eq(StudentCoach::getStatus, 1);
 
-        List<Map<String, Object>> result = list.stream().map(sc -> {
-            Map<String, Object> map = new HashMap<>();
+        if (studentName != null && !studentName.isEmpty()) {
+            List<Integer> matchedStudentIds = userMapper.selectList(
+                    new LambdaQueryWrapper<User>()
+                            .like(User::getRealName, studentName)
+                            .select(User::getUserId)
+            ).stream().map(User::getUserId).toList();
+            if (matchedStudentIds.isEmpty()) {
+                return JsonResult.ok(new Page<>(page, size, 0));
+            }
+            wrapper.in(StudentCoach::getStudentId, matchedStudentIds);
+        }
+
+        if (coachName != null && !coachName.isEmpty()) {
+            List<Integer> matchedUserIds = userMapper.selectList(
+                    new LambdaQueryWrapper<User>()
+                            .like(User::getRealName, coachName)
+                            .select(User::getUserId)
+            ).stream().map(User::getUserId).toList();
+            if (matchedUserIds.isEmpty()) {
+                return JsonResult.ok(new Page<>(page, size, 0));
+            }
+            List<Integer> matchedCoachIds = coachMapper.selectList(
+                    new LambdaQueryWrapper<Coach>()
+                            .in(Coach::getUserId, matchedUserIds)
+                            .select(Coach::getCoachId)
+            ).stream().map(Coach::getCoachId).toList();
+            if (matchedCoachIds.isEmpty()) {
+                return JsonResult.ok(new Page<>(page, size, 0));
+            }
+            wrapper.in(StudentCoach::getCoachId, matchedCoachIds);
+        }
+
+        Page<StudentCoach> scPage = studentCoachMapper.selectPage(new Page<>(page, size), wrapper);
+
+        List<StudentCoach> records = scPage.getRecords();
+        if (records.isEmpty()) {
+            return JsonResult.ok(new Page<>(scPage.getCurrent(), scPage.getSize(), scPage.getTotal()));
+        }
+
+        Set<Integer> studentIds = records.stream()
+                .map(StudentCoach::getStudentId)
+                .collect(Collectors.toSet());
+        Map<Integer, User> studentMap = userMapper.selectBatchIds(studentIds).stream()
+                .collect(Collectors.toMap(User::getUserId, u -> u, (a, b) -> a));
+
+        Set<Integer> coachIds = records.stream()
+                .map(StudentCoach::getCoachId)
+                .collect(Collectors.toSet());
+        Map<Integer, Coach> coachObjMap = coachMapper.selectBatchIds(coachIds).stream()
+                .collect(Collectors.toMap(Coach::getCoachId, c -> c, (a, b) -> a));
+        Set<Integer> coachUserIds = coachObjMap.values().stream()
+                .map(Coach::getUserId)
+                .collect(Collectors.toSet());
+        Map<Integer, User> coachUserMap = coachUserIds.isEmpty() ? Map.of()
+                : userMapper.selectBatchIds(coachUserIds).stream()
+                .collect(Collectors.toMap(User::getUserId, u -> u, (a, b) -> a));
+
+        List<Map<String, Object>> result = records.stream().map(sc -> {
+            Map<String, Object> map = new LinkedHashMap<>();
             map.put("id", sc.getId());
             map.put("studentId", sc.getStudentId());
             map.put("coachId", sc.getCoachId());
             map.put("bindTime", sc.getBindTime());
 
-            User student = userMapper.selectById(sc.getStudentId());
-            User coachUser = null;
-            if (sc.getCoachId() != null) {
-                Coach coach = coachService.getById(sc.getCoachId());
-                if (coach != null) {
-                    coachUser = userMapper.selectById(coach.getUserId());
-                }
-            }
+            User student = studentMap.get(sc.getStudentId());
             map.put("studentName", student != null ? student.getRealName() : "未知");
-            map.put("coachName", coachUser != null ? coachUser.getRealName() : "未知");
+
+            Coach coachObj = coachObjMap.get(sc.getCoachId());
+            if (coachObj != null) {
+                User coachUser = coachUserMap.get(coachObj.getUserId());
+                map.put("coachName", coachUser != null ? coachUser.getRealName() : "未知");
+            } else {
+                map.put("coachName", "未知");
+            }
             return map;
         }).collect(Collectors.toList());
-        return JsonResult.ok(result);
+
+        Page<Map<String, Object>> resultPage = new Page<>(scPage.getCurrent(), scPage.getSize(), scPage.getTotal());
+        resultPage.setRecords(result);
+        return JsonResult.ok(resultPage);
     }
 
     @RequireRole(3)
