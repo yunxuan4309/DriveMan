@@ -2,14 +2,16 @@ package com.homework.driveman.controller;
 
 import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.service.IStatisticsService;
+import com.homework.driveman.util.ExcelExportUtil;
 import com.homework.driveman.web.JsonResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
+import org.apache.poi.ss.usermodel.Workbook;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.Map;
 
 /**
@@ -49,5 +51,43 @@ public class StatisticsController {
     @GetMapping("/revenue-summary")
     public JsonResult<Map<String, Object>> getRevenueSummary() {
         return JsonResult.ok(statisticsService.getRevenueSummary());
+    }
+
+    // ==================== Excel 导出 ====================
+
+    @RequireRole(3)
+    @Operation(summary = "导出报名趋势Excel")
+    @PostMapping("/registration-trend/export-excel")
+    public void exportRegistrationTrend(HttpServletResponse response) throws IOException {
+        Map<String, Object> data = statisticsService.getRegistrationTrend();
+        Workbook wb = ExcelExportUtil.exportRegistrationTrend(data);
+        ExcelExportUtil.writeToResponse(wb, "报名趋势.xlsx", response);
+    }
+
+    @RequireRole(3)
+    @Operation(summary = "导出通过率趋势Excel")
+    @PostMapping("/pass-rate/export-excel")
+    public void exportPassRate(HttpServletResponse response) throws IOException {
+        Map<String, Object> data = statisticsService.getPassRate();
+        Workbook wb = ExcelExportUtil.exportPassRate(data);
+        ExcelExportUtil.writeToResponse(wb, "各科通过率.xlsx", response);
+    }
+
+    @RequireRole(3)
+    @Operation(summary = "导出教练效能排名Excel")
+    @PostMapping("/coach-workload/export-excel")
+    public void exportCoachWorkload(HttpServletResponse response) throws IOException {
+        Map<String, Object> data = statisticsService.getCoachWorkload();
+        Workbook wb = ExcelExportUtil.exportCoachWorkload(data);
+        ExcelExportUtil.writeToResponse(wb, "教练效能排名.xlsx", response);
+    }
+
+    @RequireRole(3)
+    @Operation(summary = "导出收入看板Excel")
+    @PostMapping("/revenue-summary/export-excel")
+    public void exportRevenueSummary(HttpServletResponse response) throws IOException {
+        Map<String, Object> data = statisticsService.getRevenueSummary();
+        Workbook wb = ExcelExportUtil.exportRevenueSummary(data);
+        ExcelExportUtil.writeToResponse(wb, "收入看板.xlsx", response);
     }
 }

@@ -8,8 +8,8 @@ import com.homework.driveman.entity.FeeStandard;
 import com.homework.driveman.entity.LicenseConfig;
 import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
-import com.homework.driveman.mapper.ConfigMapper;
 import com.homework.driveman.mapper.LicenseConfigMapper;
+import com.homework.driveman.service.IConfigService;
 import com.homework.driveman.mapper.TrainingRecordMapper;
 import com.homework.driveman.service.IExamRegistrationService;
 import com.homework.driveman.service.IExamSessionService;
@@ -68,11 +68,11 @@ public class ExamRegistrationController {
     private TrainingRecordMapper trainingRecordMapper;
 
     @Autowired
-    private ConfigMapper configMapper;
+    private IConfigService configService;
 
     /** 从 config 表读取合格分数线，默认 90 */
     private int getPassScore() {
-        String val = configMapper.getConfigValue("exam_pass_score");
+        String val = configService.getConfigValue("exam_pass_score");
         if (val == null) return 90;
         try {
             return Integer.parseInt(val);

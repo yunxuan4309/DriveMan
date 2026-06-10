@@ -64,6 +64,10 @@ public class ProgressServiceImpl implements IProgressService {
                     "未找到车型 " + type + " 的科目配置");
         }
 
+        // 确定考试模式（同一车型所有科目共享一个 examMode）
+        Integer examMode = configs.get(0).getExamMode();
+        String certName = configs.get(0).getCertName();
+
         // 3. 查该学员所有科目的考试通过情况
         List<ExamRegistration> examResults = examRegistrationMapper.selectList(
                 new LambdaQueryWrapper<ExamRegistration>()
@@ -99,6 +103,7 @@ public class ProgressServiceImpl implements IProgressService {
             String status;
             Map<String, Object> subjectData = new LinkedHashMap<>();
             subjectData.put("subject", subject);
+            subjectData.put("examMode", cfg.getExamMode());
             subjectData.put("description", cfg.getDescription());
             subjectData.put("requiredHours", cfg.getRequiredHours());
             subjectData.put("trainedHours", trained);
@@ -143,6 +148,8 @@ public class ProgressServiceImpl implements IProgressService {
         result.put("studentId", studentId);
         result.put("realName", student.getRealName());
         result.put("licenseType", type);
+        result.put("examMode", examMode);
+        result.put("certName", certName);
         result.put("subjects", subjects);
 
         // 统计总体进度
@@ -150,6 +157,16 @@ public class ProgressServiceImpl implements IProgressService {
         long passed = passedSubjects.stream().filter(s ->
                 configs.stream().anyMatch(c -> c.getSubject() == s)).count();
         result.put("progressPercent", total > 0 ? (int) (passed * 100 / total) : 0);
+
+        // 判断是否全部科目已通过
+        boolean allPassed = configs.stream()
+                .allMatch(c -> passedSubjects.contains(c.getSubject()));
+        result.put("allPassed", allPassed);
+
+        // 特种车辆双科通过且有证书名称 → 可结业领证
+        if (examMode != null && examMode == 2 && allPassed && certName != null) {
+            result.put("certificate", certName);
+        }
 
         return result;
     }

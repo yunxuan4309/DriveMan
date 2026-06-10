@@ -7,9 +7,9 @@ import com.homework.driveman.entity.StudentCoach;
 import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
 import com.homework.driveman.mapper.CoachMapper;
-import com.homework.driveman.mapper.ConfigMapper;
 import com.homework.driveman.mapper.StudentCoachMapper;
 import com.homework.driveman.mapper.TrainingRecordMapper;
+import com.homework.driveman.service.IConfigService;
 import com.homework.driveman.service.IFileService;
 import com.homework.driveman.service.IPdfService;
 import com.homework.driveman.service.IUserService;
@@ -63,7 +63,7 @@ public class FileController {
     private StudentCoachMapper studentCoachMapper;
 
     @Autowired
-    private ConfigMapper configMapper;
+    private IConfigService configService;
 
     @Autowired
     private CoachMapper coachMapper;
@@ -298,7 +298,7 @@ public class FileController {
         }
 
         // 3. 查驾校名称（从 config 表读取）
-        String schoolName = configMapper.getConfigValue("school_name");
+        String schoolName = configService.getConfigValue("school_name");
         if (schoolName == null) schoolName = "";
 
         // 4. 查各科目累计学时

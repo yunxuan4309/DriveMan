@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.homework.driveman.entity.*;
 import com.homework.driveman.exception.ServiceException;
 import com.homework.driveman.mapper.*;
+import com.homework.driveman.service.IConfigService;
 import com.homework.driveman.service.IPaymentRecordService;
 import com.homework.driveman.service.IRetakeTrainingService;
 import com.homework.driveman.web.ServiceCode;
@@ -33,7 +34,7 @@ public class RetakeTrainingServiceImpl
         implements IRetakeTrainingService {
 
     @Autowired
-    private ConfigMapper configMapper;
+    private IConfigService configService;
 
     @Autowired
     private PaymentRecordMapper paymentRecordMapper;
@@ -145,7 +146,7 @@ public class RetakeTrainingServiceImpl
             if (amount != null && amount.compareTo(BigDecimal.ZERO) > 0) {
                 record.setAmount(amount);
             } else {
-                String defaultFee = configMapper.getConfigValue("retake_training_fee");
+                String defaultFee = configService.getConfigValue("retake_training_fee");
                 if (defaultFee != null) {
                     record.setAmount(new BigDecimal(defaultFee));
                 } else {
