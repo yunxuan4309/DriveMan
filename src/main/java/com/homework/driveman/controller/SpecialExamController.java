@@ -1,6 +1,7 @@
 package com.homework.driveman.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.SpecialExamRecord;
 import com.homework.driveman.service.ISpecialExamRecordService;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 特种车辆考试管理控制器 — 管理特种车辆（N1/N2/N3）的理论与实操考试
@@ -75,15 +77,18 @@ public class SpecialExamController {
     }
 
     @RequireRole(3)
-    @Operation(summary = "查询所有特种车辆考试记录", description = "返回全部记录，可按车型筛选")
+    @Operation(summary = "分页查询特种车辆考试记录",
+            description = "支持多条件筛选：学员姓名/车型/科目/是否合格，返回结果附带学员姓名")
     @GetMapping
-    public JsonResult<List<SpecialExamRecord>> list(@RequestParam(required = false) String licenseType) {
-        LambdaQueryWrapper<SpecialExamRecord> qw = new LambdaQueryWrapper<>();
-        if (licenseType != null && !licenseType.isEmpty()) {
-            qw.eq(SpecialExamRecord::getLicenseType, licenseType);
-        }
-        qw.orderByAsc(SpecialExamRecord::getLicenseType)
-          .orderByAsc(SpecialExamRecord::getSubject);
-        return JsonResult.ok(specialExamRecordService.list(qw));
+    public JsonResult<Page<Map<String, Object>>> list(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String studentName,
+            @RequestParam(required = false) String licenseType,
+            @RequestParam(required = false) Integer subject,
+            @RequestParam(required = false) Integer passStatus) {
+        Page<SpecialExamRecord> pageParam = new Page<>(page, size);
+        return JsonResult.ok(specialExamRecordService.pageWithDetails(
+                pageParam, studentName, licenseType, subject, passStatus));
     }
 }
