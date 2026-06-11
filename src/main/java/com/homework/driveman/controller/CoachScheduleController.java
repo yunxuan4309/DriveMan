@@ -7,12 +7,13 @@ import com.homework.driveman.service.ICoachScheduleService;
 import com.homework.driveman.utils.CurrentUser;
 import com.homework.driveman.web.JsonResult;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.LinkedHashMap;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -48,30 +49,22 @@ public class CoachScheduleController {
     // ==================== 管理员端 ====================
 
     @RequireRole(3)
-    @Operation(summary = "查询所有排班（管理员端）",
-            description = "支持按教练/车辆/状态/日期范围筛选")
+    @Operation(summary = "分页查询排班列表（管理员端）",
+            description = "含教练姓名/车牌号/场地名称，支持多条件筛选：教练姓名、车牌号、场地、车型、状态、开始时间范围")
     @GetMapping
-    public JsonResult<Page<CoachSchedule>> listAll(@RequestParam(defaultValue = "1") int page,
-                                                    @RequestParam(defaultValue = "10") int size,
-                                                    @RequestParam(required = false) Integer coachId,
-                                                    @RequestParam(required = false) Integer vehicleId,
-                                                    @RequestParam(required = false) Integer status,
-                                                    @RequestParam(required = false) String startDate,
-                                                    @RequestParam(required = false) String endDate) {
-        var wrapper = scheduleService.lambdaQuery()
-                .eq(coachId != null, CoachSchedule::getCoachId, coachId)
-                .eq(vehicleId != null, CoachSchedule::getVehicleId, vehicleId)
-                .eq(status != null, CoachSchedule::getStatus, status)
-                .orderByDesc(CoachSchedule::getStartTime);
-
-        if (startDate != null) {
-            wrapper.ge(CoachSchedule::getStartTime, java.time.LocalDateTime.parse(startDate + "T00:00:00"));
-        }
-        if (endDate != null) {
-            wrapper.le(CoachSchedule::getStartTime, java.time.LocalDateTime.parse(endDate + "T23:59:59"));
-        }
-
-        return JsonResult.ok(scheduleService.page(new Page<>(page, size), wrapper));
+    public JsonResult<Page<Map<String, Object>>> listAll(@RequestParam(defaultValue = "1") int page,
+                                                          @RequestParam(defaultValue = "10") int size,
+                                                          @RequestParam(required = false) @Parameter(description = "教练姓名关键字") String keyword,
+                                                          @RequestParam(required = false) @Parameter(description = "车牌号关键字") String plateNumber,
+                                                          @RequestParam(required = false) @Parameter(description = "场地名称关键字") String venueName,
+                                                          @RequestParam(required = false) @Parameter(description = "培训车型") String licenseType,
+                                                          @RequestParam(required = false) @Parameter(description = "排班状态") Integer status,
+                                                          @RequestParam(required = false) @Parameter(description = "开始时间起 yyyy-MM-dd") String startDateStart,
+                                                          @RequestParam(required = false) @Parameter(description = "开始时间止 yyyy-MM-dd") String startDateEnd) {
+        LocalDateTime startStart = startDateStart != null ? LocalDateTime.parse(startDateStart + "T00:00:00") : null;
+        LocalDateTime startEnd = startDateEnd != null ? LocalDateTime.parse(startDateEnd + "T23:59:59") : null;
+        return JsonResult.ok(scheduleService.pageSearch(new Page<>(page, size),
+                keyword, plateNumber, venueName, licenseType, status, startStart, startEnd));
     }
 
     @RequireRole(3)

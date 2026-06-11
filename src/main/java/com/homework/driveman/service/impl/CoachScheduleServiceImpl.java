@@ -1,6 +1,7 @@
 package com.homework.driveman.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.homework.driveman.entity.Coach;
 import com.homework.driveman.entity.CoachSchedule;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class CoachScheduleServiceImpl extends ServiceImpl<CoachScheduleMapper, CoachSchedule> implements ICoachScheduleService {
@@ -181,6 +183,14 @@ public class CoachScheduleServiceImpl extends ServiceImpl<CoachScheduleMapper, C
         }
 
         return list(wrapper);
+    }
+
+    @Override
+    public Page<Map<String, Object>> pageSearch(Page<?> page, String keyword, String plateNumber,
+                                                 String venueName, String licenseType, Integer status,
+                                                 LocalDateTime startDateStart, LocalDateTime startDateEnd) {
+        return baseMapper.selectPageWithDetails(page, keyword, plateNumber, venueName,
+                licenseType, status, startDateStart, startDateEnd);
     }
 
     // ==================== 工具方法 ====================

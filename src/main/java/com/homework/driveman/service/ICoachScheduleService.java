@@ -1,9 +1,12 @@
 package com.homework.driveman.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.homework.driveman.entity.CoachSchedule;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 排班管理业务接口
@@ -38,4 +41,12 @@ public interface ICoachScheduleService extends IService<CoachSchedule> {
      * @return 可约的排班列表
      */
     List<CoachSchedule> listAvailableForStudent(Integer studentId, String licenseType);
+
+    /**
+     * 分页+多条件搜索排班（管理员端）
+     * 返回含教练姓名、车牌号、场地名称的 Map
+     */
+    Page<Map<String, Object>> pageSearch(Page<?> page, String keyword, String plateNumber,
+                                          String venueName, String licenseType, Integer status,
+                                          LocalDateTime startDateStart, LocalDateTime startDateEnd);
 }
