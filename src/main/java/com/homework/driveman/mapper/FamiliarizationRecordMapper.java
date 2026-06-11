@@ -29,7 +29,7 @@ public interface FamiliarizationRecordMapper extends BaseMapper<FamiliarizationR
             "ORDER BY fr.create_time DESC")
     List<Map<String, Object>> selectListWithDetails();
 
-    /** 分页查询合场记录（含场次信息、教练姓名、学员姓名），支持按状态筛选 */
+    /** 分页查询合场记录（含场次信息、教练姓名、学员姓名），支持多条件筛选 */
     @Select("<script>" +
             "SELECT " +
             "  fr.*, " +
@@ -41,11 +41,25 @@ public interface FamiliarizationRecordMapper extends BaseMapper<FamiliarizationR
             "LEFT JOIN user stu ON fr.student_id = stu.user_id " +
             "LEFT JOIN coach c ON fr.coach_id = c.coach_id " +
             "LEFT JOIN user u ON c.user_id = u.user_id " +
+            "LEFT JOIN venue v ON s.venue_id = v.id " +
             "WHERE fr.is_deleted = 0 AND s.is_deleted = 0 " +
             "  <if test='status != null'>AND fr.status = #{status}</if> " +
+            "  <if test='keyword != null and keyword != \"\"'>AND (stu.real_name LIKE CONCAT('%', #{keyword}, '%') OR s.location LIKE CONCAT('%', #{keyword}, '%') OR v.name LIKE CONCAT('%', #{keyword}, '%'))</if> " +
+            "  <if test='subject != null'>AND fr.subject = #{subject}</if> " +
+            "  <if test='carType != null'>AND fr.car_type = #{carType}</if> " +
+            "  <if test='examDateStart != null'>AND s.exam_date &gt;= #{examDateStart}</if> " +
+            "  <if test='examDateEnd != null'>AND s.exam_date &lt;= #{examDateEnd}</if> " +
+            "  <if test='coachName != null and coachName != \"\"'>AND u.real_name LIKE CONCAT('%', #{coachName}, '%')</if> " +
             "ORDER BY fr.create_time DESC" +
             "</script>")
-    Page<Map<String, Object>> selectPageWithDetails(Page<?> page, @Param("status") Integer status);
+    Page<Map<String, Object>> selectPageWithDetails(Page<?> page,
+                                                     @Param("status") Integer status,
+                                                     @Param("keyword") String keyword,
+                                                     @Param("subject") Integer subject,
+                                                     @Param("carType") Integer carType,
+                                                     @Param("examDateStart") String examDateStart,
+                                                     @Param("examDateEnd") String examDateEnd,
+                                                     @Param("coachName") String coachName);
 
     /** 查询单条合场记录详情（含场次信息、教练姓名、学员姓名） */
     @Select("SELECT " +

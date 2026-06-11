@@ -33,11 +33,19 @@ public interface IFamiliarizationRecordService {
     List<Map<String, Object>> listAll();
 
     /**
-     * 管理员分页查询合场记录，支持按状态筛选
-     * @param page   分页参数
-     * @param status 可选，按状态筛选
+     * 管理员分页查询合场记录，支持多条件筛选
+     * @param page         分页参数
+     * @param status       可选，按状态筛选
+     * @param keyword      可选，按学员姓名/考试地点关键字搜索
+     * @param subject      可选，按科目筛选
+     * @param carType      可选，按用车类型筛选
+     * @param examDateStart 可选，考试日期起始
+     * @param examDateEnd   可选，考试日期结束
+     * @param coachName    可选，按教练姓名搜索
      */
-    Page<Map<String, Object>> pageAll(Page<?> page, Integer status);
+    Page<Map<String, Object>> pageAll(Page<?> page, Integer status,
+                                       String keyword, Integer subject, Integer carType,
+                                       String examDateStart, String examDateEnd, String coachName);
 
     /**
      * 分页查询学员本人的合场记录，支持按状态、创建时间范围筛选

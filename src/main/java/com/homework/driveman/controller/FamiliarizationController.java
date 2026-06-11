@@ -80,13 +80,20 @@ public class FamiliarizationController {
 
     @RequireRole(3)
     @Operation(summary = "分页查询合场记录",
-            description = "支持按状态筛选。前端需实现分页组件。")
+            description = "支持多条件筛选：状态、关键字（学员姓名/考试地点）、科目、用车类型、考试日期范围、教练姓名。")
     @GetMapping
     public JsonResult<Page<Map<String, Object>>> pageAll(
             @RequestParam(defaultValue = "1") @Parameter(description = "页码") int page,
             @RequestParam(defaultValue = "10") @Parameter(description = "每页条数") int size,
-            @RequestParam(required = false) @Parameter(description = "状态：0-待支付, 1-已支付, 2-已完成, 3-已取消") Integer status) {
-        return JsonResult.ok(familiarizationRecordService.pageAll(new Page<>(page, size), status));
+            @RequestParam(required = false) @Parameter(description = "状态：0-待支付, 1-已支付, 2-已完成, 3-已取消") Integer status,
+            @RequestParam(required = false) @Parameter(description = "关键字（学员姓名/考试地点）") String keyword,
+            @RequestParam(required = false) @Parameter(description = "科目筛选") Integer subject,
+            @RequestParam(required = false) @Parameter(description = "用车类型：1-教练车, 2-考试车") Integer carType,
+            @RequestParam(required = false) @Parameter(description = "考试日期起始，格式 yyyy-MM-dd") String examDateStart,
+            @RequestParam(required = false) @Parameter(description = "考试日期结束，格式 yyyy-MM-dd") String examDateEnd,
+            @RequestParam(required = false) @Parameter(description = "教练姓名") String coachName) {
+        return JsonResult.ok(familiarizationRecordService.pageAll(
+                new Page<>(page, size), status, keyword, subject, carType, examDateStart, examDateEnd, coachName));
     }
 
     @RequireRole(3)

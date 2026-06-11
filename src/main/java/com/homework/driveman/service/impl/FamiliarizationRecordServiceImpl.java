@@ -217,7 +217,9 @@ public class FamiliarizationRecordServiceImpl implements IFamiliarizationRecordS
     }
 
     @Override
-    public Page<Map<String, Object>> pageAll(Page<?> page, Integer status) {
-        return familiarizationRecordMapper.selectPageWithDetails(page, status);
+    public Page<Map<String, Object>> pageAll(Page<?> page, Integer status,
+                                              String keyword, Integer subject, Integer carType,
+                                              String examDateStart, String examDateEnd, String coachName) {
+        return familiarizationRecordMapper.selectPageWithDetails(page, status, keyword, subject, carType, examDateStart, examDateEnd, coachName);
     }
 }
