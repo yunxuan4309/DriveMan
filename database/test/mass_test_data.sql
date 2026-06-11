@@ -266,27 +266,27 @@ INSERT IGNORE INTO `coach_application` (`student_id`, `coach_id`, `status`, `app
 -- ============================================
 -- 9. 文件表（12 条）
 -- ============================================
-INSERT IGNORE INTO `file` (`user_id`, `file_name`, `file_path`, `file_type`, `upload_time`) VALUES
+INSERT IGNORE INTO `file` (`user_id`, `file_name`, `file_path`, `file_size`, `mime_type`, `file_type`, `biz_type`, `biz_id`, `upload_time`) VALUES
 
 -- 赵强上传的材料
-(6, '身份证正面.jpg',      'id_card_front/6_20260523001.jpg',    'id_card_front',  '2026-05-23 09:00:00'),
-(6, '身份证反面.jpg',      'id_card_back/6_20260523002.jpg',     'id_card_back',   '2026-05-23 09:01:00'),
-(6, '体检表.pdf',          'physical_exam/6_20260523003.pdf',    'physical_exam',  '2026-05-23 09:02:00'),
-(6, '报名表_赵强.pdf',     'registration_pdf/6_registration.pdf', 'registration_pdf', '2026-05-23 10:00:00'),
-(6, '准考证_赵强.pdf',     'admission_ticket/6_ticket.pdf',      'admission_ticket','2026-05-23 10:01:00'),
+(6, '身份证正面.jpg',      'id_card_front/6_20260523001.jpg',    102400, 'image/jpeg',      'id_card_front',     'user_profile',      NULL, '2026-05-23 09:00:00'),
+(6, '身份证反面.jpg',      'id_card_back/6_20260523002.jpg',     98500,  'image/jpeg',      'id_card_back',      'user_profile',      NULL, '2026-05-23 09:01:00'),
+(6, '体检表.pdf',          'physical_exam/6_20260523003.pdf',    204800, 'application/pdf',  'physical_exam',     'physical_exam',     1,    '2026-05-23 09:02:00'),
+(6, '报名表_赵强.pdf',     'registration_pdf/6_registration.pdf',152000, 'application/pdf',  'registration_pdf',  'registration_form', 6,    '2026-05-23 10:00:00'),
+(6, '准考证_赵强.pdf',     'admission_ticket/6_ticket.pdf',      128000, 'application/pdf',  'admission_ticket',  'exam_ticket',       6,    '2026-05-23 10:01:00'),
 
 -- 陈静上传的材料
-(7, '身份证正面.jpg',      'id_card_front/7_20260524001.jpg',    'id_card_front',  '2026-05-24 09:00:00'),
-(7, '身份证反面.jpg',      'id_card_back/7_20260524002.jpg',     'id_card_back',   '2026-05-24 09:01:00'),
-(7, '体检表.pdf',          'physical_exam/7_20260524003.pdf',    'physical_exam',  '2026-05-24 09:02:00'),
+(7, '身份证正面.jpg',      'id_card_front/7_20260524001.jpg',    102400, 'image/jpeg',      'id_card_front',     'user_profile',      NULL, '2026-05-24 09:00:00'),
+(7, '身份证反面.jpg',      'id_card_back/7_20260524002.jpg',     98500,  'image/jpeg',      'id_card_back',      'user_profile',      NULL, '2026-05-24 09:01:00'),
+(7, '体检表.pdf',          'physical_exam/7_20260524003.pdf',    204800, 'application/pdf',  'physical_exam',     'physical_exam',     2,    '2026-05-24 09:02:00'),
 
 -- 刘洋
-(8, '身份证正面.jpg',      'id_card_front/8_20260525001.jpg',    'id_card_front',  '2026-05-25 09:00:00'),
-(8, '身份证反面.jpg',      'id_card_back/8_20260525002.jpg',     'id_card_back',   '2026-05-25 09:01:00'),
-(8, '体检表.png',          'physical_exam/8_20260525003.png',    'physical_exam',  '2026-05-25 09:02:00'),
+(8, '身份证正面.jpg',      'id_card_front/8_20260525001.jpg',    102400, 'image/jpeg',      'id_card_front',     'user_profile',      NULL, '2026-05-25 09:00:00'),
+(8, '身份证反面.jpg',      'id_card_back/8_20260525002.jpg',     98500,  'image/jpeg',      'id_card_back',      'user_profile',      NULL, '2026-05-25 09:01:00'),
+(8, '体检表.png',          'physical_exam/8_20260525003.png',    210000, 'image/png',       'physical_exam',     'physical_exam',     3,    '2026-05-25 09:02:00'),
 
 -- 周婷
-(9, '身份证正面.jpg',      'id_card_front/9_20260526001.jpg',    'id_card_front',  '2026-05-26 09:00:00');
+(9, '身份证正面.jpg',      'id_card_front/9_20260526001.jpg',    102400, 'image/jpeg',      'id_card_front',     'user_profile',      NULL, '2026-05-26 09:00:00');
 
 -- ============================================
 -- 10. 系统公告（3 条）

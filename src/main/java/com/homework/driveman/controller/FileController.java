@@ -202,9 +202,27 @@ public class FileController {
                     .replace("+", "%20");
 
             // 确定 Content-Type: 预览用实际类型，下载用 octet-stream
-            MediaType contentType = preview && file.getMimeType() != null
-                    ? MediaType.parseMediaType(file.getMimeType())
-                    : MediaType.APPLICATION_OCTET_STREAM;
+            MediaType contentType = MediaType.APPLICATION_OCTET_STREAM;
+            if (preview) {
+                if (file.getMimeType() != null) {
+                    contentType = MediaType.parseMediaType(file.getMimeType());
+                } else {
+                    // mime_type 为空时从扩展名推断
+                    String fn = file.getFileName();
+                    if (fn != null) {
+                        String ext = fn.substring(fn.lastIndexOf('.') + 1).toLowerCase();
+                        contentType = switch (ext) {
+                            case "jpg", "jpeg" -> MediaType.IMAGE_JPEG;
+                            case "png" -> MediaType.IMAGE_PNG;
+                            case "gif" -> MediaType.IMAGE_GIF;
+                            case "bmp" -> MediaType.valueOf("image/bmp");
+                            case "webp" -> MediaType.valueOf("image/webp");
+                            case "pdf" -> MediaType.APPLICATION_PDF;
+                            default -> MediaType.APPLICATION_OCTET_STREAM;
+                        };
+                    }
+                }
+            }
 
             ContentDisposition disposition = preview
                     ? ContentDisposition.inline().filename(encodedFileName, StandardCharsets.UTF_8).build()
