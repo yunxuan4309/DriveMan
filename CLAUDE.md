@@ -549,3 +549,7 @@ mvn spring-boot:run
 - **异常处理** — 业务异常统一抛出 `ServiceException(ServiceCode, message)`，全局处理器捕获
 - **控制器** — 不经 Service 层直写逻辑的简单操作（如单表简单查询）允许写在 Controller 中，复杂业务逻辑（PDF 生成、文件存储、推荐算法）下沉到 Service 实现
 - **文档** — API 文档按模块拆分为独立 markdown 文件（登录注册、学员、教练、约车、考试、统计等）
+
+
+
+##前端项目所在地:D:\Vue-Workspace\DriveMan,包含前端所有文件
