@@ -6,6 +6,7 @@ import com.homework.driveman.entity.Vehicle;
 import com.homework.driveman.service.IVehicleService;
 import com.homework.driveman.web.JsonResult;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -24,18 +25,19 @@ public class VehicleController {
     private IVehicleService vehicleService;
 
     @RequireRole(3)
-    @Operation(summary = "分页查询车辆列表", description = "支持按车型、状态筛选")
+    @Operation(summary = "分页查询车辆列表",
+            description = "支持车型/状态精确匹配 + 车牌号/品牌/型号模糊搜索 + 座位数精确匹配")
     @GetMapping
     public JsonResult<Page<Vehicle>> list(@RequestParam(defaultValue = "1") int page,
                                            @RequestParam(defaultValue = "10") int size,
-                                           @RequestParam(required = false) String vehicleType,
-                                           @RequestParam(required = false) Integer status) {
-        Page<Vehicle> result = vehicleService.lambdaQuery()
-                .eq(vehicleType != null, Vehicle::getVehicleType, vehicleType)
-                .eq(status != null, Vehicle::getStatus, status)
-                .orderByAsc(Vehicle::getVehicleType)
-                .orderByAsc(Vehicle::getId)
-                .page(new Page<>(page, size));
+                                           @RequestParam(required = false) @Parameter(description = "车型，精确匹配") String vehicleType,
+                                           @RequestParam(required = false) @Parameter(description = "状态：1-空闲,2-使用中,3-维修,4-报废") Integer status,
+                                           @RequestParam(required = false) @Parameter(description = "车牌号，模糊搜索") String plateNumber,
+                                           @RequestParam(required = false) @Parameter(description = "品牌，模糊搜索") String brand,
+                                           @RequestParam(required = false) @Parameter(description = "型号，模糊搜索") String model,
+                                           @RequestParam(required = false) @Parameter(description = "座位数，精确匹配") Integer seats) {
+        Page<Vehicle> result = vehicleService.pageSearch(new Page<>(page, size),
+                vehicleType, status, plateNumber, brand, model, seats);
         return JsonResult.ok(result);
     }
 
