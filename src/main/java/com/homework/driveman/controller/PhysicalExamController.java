@@ -1,5 +1,6 @@
 package com.homework.driveman.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.PhysicalExam;
 import com.homework.driveman.exception.ServiceException;
@@ -8,12 +9,14 @@ import com.homework.driveman.utils.CurrentUser;
 import com.homework.driveman.web.JsonResult;
 import com.homework.driveman.web.ServiceCode;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 体检申请控制器 — 学员端提交体检申请,管理员审核
@@ -75,13 +78,15 @@ public class PhysicalExamController {
     // ==================== 管理员端接口 ====================
 
     @RequireRole(3)
-    @Operation(summary = "查询所有体检申请", description = "管理员查看所有学员的体检申请")
+    @Operation(summary = "分页查询所有体检申请",
+            description = "支持按学员姓名和状态筛选。前端需实现分页组件。")
     @GetMapping
-    public JsonResult<List<PhysicalExam>> listAll() {
-        List<PhysicalExam> list = physicalExamService.lambdaQuery()
-                .orderByDesc(PhysicalExam::getCreateTime)
-                .list();
-        return JsonResult.ok(list);
+    public JsonResult<Page<Map<String, Object>>> listAll(
+            @RequestParam(defaultValue = "1") @Parameter(description = "页码") int page,
+            @RequestParam(defaultValue = "10") @Parameter(description = "每页条数") int size,
+            @RequestParam(required = false) @Parameter(description = "学员姓名关键词") String studentName,
+            @RequestParam(required = false) @Parameter(description = "状态：0-待审核, 1-审核通过, 2-审核不通过, 3-已完成") Integer status) {
+        return JsonResult.ok(physicalExamService.pageAll(new Page<>(page, size), studentName, status));
     }
 
     @RequireRole(3)

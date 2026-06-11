@@ -1,5 +1,6 @@
 package com.homework.driveman.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.entity.FamiliarizationRecord;
 
 import java.util.List;
@@ -30,4 +31,11 @@ public interface IFamiliarizationRecordService {
 
     /** 管理员查询所有 */
     List<Map<String, Object>> listAll();
+
+    /**
+     * 管理员分页查询合场记录，支持按状态筛选
+     * @param page   分页参数
+     * @param status 可选，按状态筛选
+     */
+    Page<Map<String, Object>> pageAll(Page<?> page, Integer status);
 }

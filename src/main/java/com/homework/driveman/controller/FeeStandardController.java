@@ -1,15 +1,15 @@
 package com.homework.driveman.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.FeeStandard;
 import com.homework.driveman.service.IFeeStandardService;
 import com.homework.driveman.web.JsonResult;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 /**
  * 费用标准管理控制器 — 管理员维护各车型各科目的收费标准
@@ -24,15 +24,13 @@ public class FeeStandardController {
     private IFeeStandardService feeStandardService;
 
     @RequireRole(3)
-    @Operation(summary = "查询所有费用标准", description = "返回全部费用标准列表，按车型和科目排序")
+    @Operation(summary = "分页查询费用标准", description = "支持按车型筛选，分页返回费用标准列表")
     @GetMapping
-    public JsonResult<List<FeeStandard>> list() {
-        // 按车型分组、科目升序排列
-        List<FeeStandard> list = feeStandardService.lambdaQuery()
-                .orderByAsc(FeeStandard::getLicenseType)
-                .orderByAsc(FeeStandard::getSubject)
-                .list();
-        return JsonResult.ok(list);
+    public JsonResult<Page<FeeStandard>> list(
+            @RequestParam(defaultValue = "1") @Parameter(description = "页码") int page,
+            @RequestParam(defaultValue = "10") @Parameter(description = "每页条数") int size,
+            @RequestParam(required = false) @Parameter(description = "车型筛选（C1/C2/...）") String licenseType) {
+        return JsonResult.ok(feeStandardService.pageWithDetails(new Page<>(page, size), licenseType));
     }
 
     @RequireRole(3)
@@ -46,8 +44,8 @@ public class FeeStandardController {
     @RequireRole(3)
     @Operation(summary = "按车型查询费用标准", description = "查询指定车型（如 C1/C2）的所有费用记录（含全包套餐和各科目费用）")
     @GetMapping("/type/{licenseType}")
-    public JsonResult<List<FeeStandard>> getByLicenseType(@PathVariable String licenseType) {
-        List<FeeStandard> list = feeStandardService.lambdaQuery()
+    public JsonResult<java.util.List<FeeStandard>> getByLicenseType(@PathVariable String licenseType) {
+        java.util.List<FeeStandard> list = feeStandardService.lambdaQuery()
                 .eq(FeeStandard::getLicenseType, licenseType)
                 .orderByAsc(FeeStandard::getSubject)
                 .list();

@@ -1,9 +1,11 @@
 package com.homework.driveman.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.homework.driveman.entity.PhysicalExam;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 体检申请服务接口
@@ -39,4 +41,12 @@ public interface IPhysicalExamService extends IService<PhysicalExam> {
      * 教练查看名下学员的体检申请
      */
     List<PhysicalExam> listByCoach(Integer userId);
+
+    /**
+     * 管理员分页查询体检申请，支持按学员姓名和状态筛选
+     * @param page        分页参数
+     * @param studentName 学员姓名关键词（可选）
+     * @param status      状态（可选）
+     */
+    Page<Map<String, Object>> pageAll(Page<PhysicalExam> page, String studentName, Integer status);
 }

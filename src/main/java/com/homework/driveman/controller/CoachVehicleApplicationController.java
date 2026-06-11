@@ -6,6 +6,7 @@ import com.homework.driveman.entity.CoachVehicleApplication;
 import com.homework.driveman.service.ICoachVehicleApplicationService;
 import com.homework.driveman.web.JsonResult;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -34,11 +35,16 @@ public class CoachVehicleApplicationController {
 
     @RequireRole(3)
     @Operation(summary = "分页查询所有车型变更申请记录",
-            description = "可查看全部历史记录，含教练姓名")
+            description = "支持按教练姓名、车型、状态筛选。前端需实现分页组件。")
     @GetMapping
-    public JsonResult<Page<Map<String, Object>>> listAll(@RequestParam(defaultValue = "1") int page,
-                                                          @RequestParam(defaultValue = "10") int size) {
-        return JsonResult.ok(coachVehicleApplicationService.listAll(new Page<>(page, size)));
+    public JsonResult<Page<Map<String, Object>>> listAll(
+            @RequestParam(defaultValue = "1") @Parameter(description = "页码") int page,
+            @RequestParam(defaultValue = "10") @Parameter(description = "每页条数") int size,
+            @RequestParam(required = false) @Parameter(description = "教练姓名关键词") String coachName,
+            @RequestParam(required = false) @Parameter(description = "申请车型（如 C1）") String vehicleType,
+            @RequestParam(required = false) @Parameter(description = "状态：0-待审核, 1-通过, 2-拒绝") Integer status) {
+        return JsonResult.ok(coachVehicleApplicationService.listAll(
+                new Page<>(page, size), coachName, vehicleType, status));
     }
 
     @RequireRole(3)

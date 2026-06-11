@@ -9,6 +9,7 @@ import com.homework.driveman.utils.CurrentUser;
 import com.homework.driveman.web.JsonResult;
 import com.homework.driveman.web.ServiceCode;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -78,24 +79,31 @@ public class RetakeTrainingController {
         return JsonResult.ok();
     }
 
-    @Operation(summary = "学员查询自己的二次培训记录")
+    @Operation(summary = "学员查询自己的二次培训记录（分页）",
+            description = "学员分页查看自己的二次培训记录。前端需实现分页组件。")
     @GetMapping("/student/{studentId}")
-    public JsonResult<List<Map<String, Object>>> listByStudent(@PathVariable Integer studentId,
+    public JsonResult<Page<Map<String, Object>>> listByStudent(@PathVariable Integer studentId,
+                                                                @RequestParam(defaultValue = "1") @Parameter(description = "页码") int page,
+                                                                @RequestParam(defaultValue = "10") @Parameter(description = "每页条数") int size,
                                                                 HttpServletRequest request) {
         CurrentUser currentUser = (CurrentUser) request.getAttribute("currentUser");
         // 学员只能查自己的，管理员可以查任意
         if (currentUser.getRole() == 1 && !currentUser.getUserId().equals(studentId)) {
             throw new ServiceException(ServiceCode.ERROR_FORBIDDEN, "只能查看自己的记录");
         }
-        return JsonResult.ok(retakeTrainingService.listByStudent(studentId));
+        return JsonResult.ok(retakeTrainingService.pageByStudent(new Page<>(page, size), studentId));
     }
 
     @RequireRole(3)
     @Operation(summary = "管理员分页查询所有二次培训记录",
-            description = "返回所有二次培训记录，含学员姓名等关联信息")
+            description = "支持按学员姓名、状态、科目筛选。前端需实现分页组件。")
     @GetMapping
-    public JsonResult<Page<Map<String, Object>>> listAll(@RequestParam(defaultValue = "1") int page,
-                                                          @RequestParam(defaultValue = "10") int size) {
-        return JsonResult.ok(retakeTrainingService.pageAll(new Page<>(page, size)));
+    public JsonResult<Page<Map<String, Object>>> listAll(
+            @RequestParam(defaultValue = "1") @Parameter(description = "页码") int page,
+            @RequestParam(defaultValue = "10") @Parameter(description = "每页条数") int size,
+            @RequestParam(required = false) @Parameter(description = "学员姓名关键词") String keyword,
+            @RequestParam(required = false) @Parameter(description = "状态：0-待审核, 1-培训中, 2-已完成, 3-已取消") Integer status,
+            @RequestParam(required = false) @Parameter(description = "科目：1-4") Integer subject) {
+        return JsonResult.ok(retakeTrainingService.pageAll(new Page<>(page, size), keyword, status, subject));
     }
 }

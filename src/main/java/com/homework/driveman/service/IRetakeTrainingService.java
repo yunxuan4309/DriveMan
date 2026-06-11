@@ -46,12 +46,21 @@ public interface IRetakeTrainingService {
     List<Map<String, Object>> listByStudent(Integer studentId);
 
     /**
+     * 学员分页查询自己的二次培训记录
+     */
+    Page<Map<String, Object>> pageByStudent(Page<?> page, Integer studentId);
+
+    /**
      * 教练查询名下学员的二次培训记录
      */
     List<Map<String, Object>> listByCoach(Integer coachId);
 
     /**
-     * 管理员分页查询所有二次培训记录
+     * 管理员分页查询所有二次培训记录，支持多条件筛选
+     * @param page    分页参数
+     * @param keyword 学员姓名关键词（可选）
+     * @param status  状态（可选）
+     * @param subject 科目（可选）
      */
-    Page<Map<String, Object>> pageAll(Page<?> page);
+    Page<Map<String, Object>> pageAll(Page<?> page, String keyword, Integer status, Integer subject);
 }

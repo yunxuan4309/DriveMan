@@ -146,10 +146,46 @@ public class CoachVehicleApplicationServiceImpl
     }
 
     @Override
-    public Page<Map<String, Object>> listAll(Page<CoachVehicleApplication> page) {
-        Page<CoachVehicleApplication> rawPage = baseMapper.selectPage(page,
-                new LambdaQueryWrapper<CoachVehicleApplication>()
-                        .orderByDesc(CoachVehicleApplication::getApplyTime));
+    public Page<Map<String, Object>> listAll(Page<CoachVehicleApplication> page,
+                                             String coachName,
+                                             String vehicleType,
+                                             Integer status) {
+        LambdaQueryWrapper<CoachVehicleApplication> wrapper = new LambdaQueryWrapper<>();
+
+        // 按教练姓名搜索
+        if (coachName != null && !coachName.isEmpty()) {
+            List<Integer> coachUserIds = userMapper.selectList(
+                    new LambdaQueryWrapper<User>()
+                            .like(User::getRealName, coachName)
+                            .select(User::getUserId)
+            ).stream().map(User::getUserId).toList();
+            if (coachUserIds.isEmpty()) {
+                return new Page<>(page.getCurrent(), page.getSize(), 0);
+            }
+            // 通过 coach 表的 user_id 关联查找 coach_id
+            List<Integer> matchedCoachIds = coachMapper.selectList(
+                    new LambdaQueryWrapper<Coach>()
+                            .in(Coach::getUserId, coachUserIds)
+                            .select(Coach::getCoachId)
+            ).stream().map(Coach::getCoachId).toList();
+            if (matchedCoachIds.isEmpty()) {
+                return new Page<>(page.getCurrent(), page.getSize(), 0);
+            }
+            wrapper.in(CoachVehicleApplication::getCoachId, matchedCoachIds);
+        }
+
+        // 按车型筛选（申请车型中包含指定值）
+        if (vehicleType != null && !vehicleType.isEmpty()) {
+            wrapper.like(CoachVehicleApplication::getRequestedVehicleType, vehicleType);
+        }
+
+        // 按状态筛选
+        if (status != null) {
+            wrapper.eq(CoachVehicleApplication::getStatus, status);
+        }
+
+        wrapper.orderByDesc(CoachVehicleApplication::getApplyTime);
+        Page<CoachVehicleApplication> rawPage = baseMapper.selectPage(page, wrapper);
 
         List<Map<String, Object>> records = enrichWithCoachName(rawPage.getRecords());
 

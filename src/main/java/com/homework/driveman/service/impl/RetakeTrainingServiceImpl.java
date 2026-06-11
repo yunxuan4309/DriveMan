@@ -227,6 +227,19 @@ public class RetakeTrainingServiceImpl
     }
 
     @Override
+    public Page<Map<String, Object>> pageByStudent(Page<?> page, Integer studentId) {
+        Page<RetakeTrainingRecord> rawPage = baseMapper.selectPage(
+                new Page<>(page.getCurrent(), page.getSize()),
+                new LambdaQueryWrapper<RetakeTrainingRecord>()
+                        .eq(RetakeTrainingRecord::getStudentId, studentId)
+                        .orderByDesc(RetakeTrainingRecord::getCreateTime));
+        List<Map<String, Object>> result = attachDetails(rawPage.getRecords());
+        Page<Map<String, Object>> resultPage = new Page<>(rawPage.getCurrent(), rawPage.getSize(), rawPage.getTotal());
+        resultPage.setRecords(result);
+        return resultPage;
+    }
+
+    @Override
     public List<Map<String, Object>> listByCoach(Integer coachId) {
         // 查出该教练名下的学员
         List<StudentCoach> bindings = studentCoachMapper.selectList(
@@ -248,9 +261,34 @@ public class RetakeTrainingServiceImpl
     }
 
     @Override
-    public Page<Map<String, Object>> pageAll(Page<?> page) {
-        Page<RetakeTrainingRecord> rawPage = baseMapper.selectPage(
-                new Page<>(page.getCurrent(), page.getSize()), null);
+    public Page<Map<String, Object>> pageAll(Page<?> page, String keyword, Integer status, Integer subject) {
+        LambdaQueryWrapper<RetakeTrainingRecord> wrapper = new LambdaQueryWrapper<>();
+
+        // 按学员姓名搜索
+        if (keyword != null && !keyword.isEmpty()) {
+            List<Integer> matchedUserIds = userMapper.selectList(
+                    new LambdaQueryWrapper<User>()
+                            .like(User::getRealName, keyword)
+                            .select(User::getUserId)
+            ).stream().map(User::getUserId).toList();
+            if (matchedUserIds.isEmpty()) {
+                return new Page<>(page.getCurrent(), page.getSize(), 0);
+            }
+            wrapper.in(RetakeTrainingRecord::getStudentId, matchedUserIds);
+        }
+
+        // 按状态筛选
+        if (status != null) {
+            wrapper.eq(RetakeTrainingRecord::getStatus, status);
+        }
+
+        // 按科目筛选
+        if (subject != null) {
+            wrapper.eq(RetakeTrainingRecord::getSubject, subject);
+        }
+
+        wrapper.orderByDesc(RetakeTrainingRecord::getCreateTime);
+        Page<RetakeTrainingRecord> rawPage = baseMapper.selectPage(new Page<>(page.getCurrent(), page.getSize()), wrapper);
         List<Map<String, Object>> result = attachDetails(rawPage.getRecords());
         Page<Map<String, Object>> resultPage = new Page<>(rawPage.getCurrent(), rawPage.getSize(), rawPage.getTotal());
         resultPage.setRecords(result);

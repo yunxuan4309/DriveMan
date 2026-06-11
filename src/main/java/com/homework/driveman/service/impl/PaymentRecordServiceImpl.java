@@ -1,6 +1,7 @@
 package com.homework.driveman.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.entity.PaymentRecord;
 import com.homework.driveman.exception.ServiceException;
 import com.homework.driveman.mapper.PaymentRecordMapper;
@@ -121,6 +122,16 @@ public class PaymentRecordServiceImpl implements IPaymentRecordService {
     @Override
     public List<Map<String, Object>> listOutstanding() {
         return paymentRecordMapper.selectOutstandingList();
+    }
+
+    @Override
+    public Page<Map<String, Object>> pageList(Page<?> page, Integer studentId, String bizType, Integer status) {
+        return paymentRecordMapper.selectPageWithDetails(page, studentId, bizType, status);
+    }
+
+    @Override
+    public Page<Map<String, Object>> pageOutstanding(Page<?> page) {
+        return paymentRecordMapper.selectPageOutstanding(page);
     }
 
     @Override

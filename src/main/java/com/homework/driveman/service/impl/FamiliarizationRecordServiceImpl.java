@@ -1,6 +1,7 @@
 package com.homework.driveman.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.entity.*;
 import com.homework.driveman.exception.ServiceException;
 import com.homework.driveman.mapper.FamiliarizationRecordMapper;
@@ -198,5 +199,10 @@ public class FamiliarizationRecordServiceImpl implements IFamiliarizationRecordS
     @Override
     public List<Map<String, Object>> listAll() {
         return familiarizationRecordMapper.selectListWithDetails();
+    }
+
+    @Override
+    public Page<Map<String, Object>> pageAll(Page<?> page, Integer status) {
+        return familiarizationRecordMapper.selectPageWithDetails(page, status);
     }
 }

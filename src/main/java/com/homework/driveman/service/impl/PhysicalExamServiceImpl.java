@@ -1,15 +1,18 @@
 package com.homework.driveman.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.homework.driveman.entity.Coach;
 import com.homework.driveman.entity.PhysicalExam;
 import com.homework.driveman.entity.StudentCoach;
+import com.homework.driveman.entity.User;
 import com.homework.driveman.entity.Venue;
 import com.homework.driveman.exception.ServiceException;
 import com.homework.driveman.mapper.CoachMapper;
 import com.homework.driveman.mapper.PhysicalExamMapper;
 import com.homework.driveman.mapper.StudentCoachMapper;
+import com.homework.driveman.mapper.UserMapper;
 import com.homework.driveman.mapper.VenueMapper;
 import com.homework.driveman.service.IPhysicalExamService;
 import com.homework.driveman.web.ServiceCode;
@@ -19,7 +22,10 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -37,6 +43,9 @@ public class PhysicalExamServiceImpl extends ServiceImpl<PhysicalExamMapper, Phy
 
     @Autowired
     private StudentCoachMapper studentCoachMapper;
+
+    @Autowired
+    private UserMapper userMapper;
 
     @Override
     public PhysicalExam apply(Integer studentId, Integer venueId, String examDate) {
@@ -179,5 +188,63 @@ public class PhysicalExamServiceImpl extends ServiceImpl<PhysicalExamMapper, Phy
                 .in(PhysicalExam::getStudentId, studentIds)
                 .orderByDesc(PhysicalExam::getCreateTime)
                 .list();
+    }
+
+    @Override
+    public Page<Map<String, Object>> pageAll(Page<PhysicalExam> page, String studentName, Integer status) {
+        LambdaQueryWrapper<PhysicalExam> wrapper = new LambdaQueryWrapper<>();
+
+        // 按学员姓名搜索
+        if (studentName != null && !studentName.isEmpty()) {
+            List<Integer> matchedUserIds = userMapper.selectList(
+                    new LambdaQueryWrapper<User>()
+                            .like(User::getRealName, studentName)
+                            .select(User::getUserId)
+            ).stream().map(User::getUserId).toList();
+            if (matchedUserIds.isEmpty()) {
+                return new Page<>(page.getCurrent(), page.getSize(), 0);
+            }
+            wrapper.in(PhysicalExam::getStudentId, matchedUserIds);
+        }
+
+        if (status != null) {
+            wrapper.eq(PhysicalExam::getStatus, status);
+        }
+
+        wrapper.orderByDesc(PhysicalExam::getCreateTime);
+        Page<PhysicalExam> rawPage = baseMapper.selectPage(page, wrapper);
+
+        List<PhysicalExam> records = rawPage.getRecords();
+        if (records.isEmpty()) {
+            return new Page<>(rawPage.getCurrent(), rawPage.getSize(), rawPage.getTotal());
+        }
+
+        // 批量加载学员姓名
+        Set<Integer> studentIds = records.stream()
+                .map(PhysicalExam::getStudentId)
+                .collect(Collectors.toSet());
+        Map<Integer, User> userMap = userMapper.selectBatchIds(studentIds).stream()
+                .collect(Collectors.toMap(User::getUserId, u -> u, (a, b) -> a));
+
+        List<Map<String, Object>> resultList = records.stream().map(r -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", r.getId());
+            m.put("studentId", r.getStudentId());
+            User u = userMap.get(r.getStudentId());
+            m.put("studentName", u != null ? u.getRealName() : null);
+            m.put("venueId", r.getVenueId());
+            m.put("location", r.getLocation());
+            m.put("examDate", r.getExamDate());
+            m.put("status", r.getStatus());
+            m.put("remark", r.getRemark());
+            m.put("fileId", r.getFileId());
+            m.put("result", r.getResult());
+            m.put("createTime", r.getCreateTime());
+            return m;
+        }).collect(Collectors.toList());
+
+        Page<Map<String, Object>> resultPage = new Page<>(rawPage.getCurrent(), rawPage.getSize(), rawPage.getTotal());
+        resultPage.setRecords(resultList);
+        return resultPage;
     }
 }

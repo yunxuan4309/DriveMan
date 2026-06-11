@@ -1,5 +1,6 @@
 package com.homework.driveman.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.PaymentRecord;
 import com.homework.driveman.exception.ServiceException;
@@ -8,6 +9,7 @@ import com.homework.driveman.utils.CurrentUser;
 import com.homework.driveman.web.JsonResult;
 import com.homework.driveman.web.ServiceCode;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,13 +37,16 @@ public class PaymentController {
     }
 
     @RequireRole(3)
-    @Operation(summary = "支付记录列表", description = "按学员、业务类型、状态筛选")
+    @Operation(summary = "分页查询支付记录",
+            description = "按学员ID、业务类型、状态筛选，含学员姓名。前端需实现分页组件。")
     @GetMapping
-    public JsonResult<List<PaymentRecord>> list(
-            @RequestParam(required = false) Integer studentId,
-            @RequestParam(required = false) String bizType,
-            @RequestParam(required = false) Integer status) {
-        return JsonResult.ok(paymentRecordService.list(studentId, bizType, status));
+    public JsonResult<Page<Map<String, Object>>> list(
+            @RequestParam(defaultValue = "1") @Parameter(description = "页码") int page,
+            @RequestParam(defaultValue = "10") @Parameter(description = "每页条数") int size,
+            @RequestParam(required = false) @Parameter(description = "学员ID") Integer studentId,
+            @RequestParam(required = false) @Parameter(description = "业务类型") String bizType,
+            @RequestParam(required = false) @Parameter(description = "状态：0-待支付, 1-已支付, 2-已退款") Integer status) {
+        return JsonResult.ok(paymentRecordService.pageList(new Page<>(page, size), studentId, bizType, status));
     }
 
     @RequireRole(3)
@@ -59,10 +64,13 @@ public class PaymentController {
     }
 
     @RequireRole(3)
-    @Operation(summary = "欠费清单", description = "所有待支付记录，含学员姓名、电话、车型信息")
+    @Operation(summary = "欠费清单（分页）",
+            description = "所有待支付记录，含学员姓名、电话、车型信息。前端需实现分页组件。")
     @GetMapping("/outstanding")
-    public JsonResult<List<Map<String, Object>>> listOutstanding() {
-        return JsonResult.ok(paymentRecordService.listOutstanding());
+    public JsonResult<Page<Map<String, Object>>> listOutstanding(
+            @RequestParam(defaultValue = "1") @Parameter(description = "页码") int page,
+            @RequestParam(defaultValue = "10") @Parameter(description = "每页条数") int size) {
+        return JsonResult.ok(paymentRecordService.pageOutstanding(new Page<>(page, size)));
     }
 
     // ==================== 学员端接口 ====================

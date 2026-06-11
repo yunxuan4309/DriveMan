@@ -32,7 +32,14 @@ public interface ICoachVehicleApplicationService extends IService<CoachVehicleAp
     List<Map<String, Object>> listPending();
 
     /**
-     * 分页查询所有申请记录（含教练名称）
+     * 分页查询所有申请记录（含教练名称），支持按教练姓名、车型、状态筛选
+     * @param page        分页参数
+     * @param coachName   教练姓名关键词（可选）
+     * @param vehicleType 车型（可选）
+     * @param status      状态（可选）
      */
-    Page<Map<String, Object>> listAll(Page<CoachVehicleApplication> page);
+    Page<Map<String, Object>> listAll(Page<CoachVehicleApplication> page,
+                                      String coachName,
+                                      String vehicleType,
+                                      Integer status);
 }

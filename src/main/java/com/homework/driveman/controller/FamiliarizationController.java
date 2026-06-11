@@ -1,11 +1,13 @@
 package com.homework.driveman.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.FamiliarizationRecord;
 import com.homework.driveman.service.IFamiliarizationRecordService;
 import com.homework.driveman.utils.CurrentUser;
 import com.homework.driveman.web.JsonResult;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,10 +64,21 @@ public class FamiliarizationController {
     // ==================== 管理员端接口 ====================
 
     @RequireRole(3)
-    @Operation(summary = "合场记录列表", description = "所有合场记录，含场次信息、教练姓名")
-    @GetMapping
+    @Operation(summary = "合场记录列表（全部）", description = "所有合场记录，含场次信息、教练姓名")
+    @GetMapping("/all")
     public JsonResult<List<Map<String, Object>>> listAll() {
         return JsonResult.ok(familiarizationRecordService.listAll());
+    }
+
+    @RequireRole(3)
+    @Operation(summary = "分页查询合场记录",
+            description = "支持按状态筛选。前端需实现分页组件。")
+    @GetMapping
+    public JsonResult<Page<Map<String, Object>>> pageAll(
+            @RequestParam(defaultValue = "1") @Parameter(description = "页码") int page,
+            @RequestParam(defaultValue = "10") @Parameter(description = "每页条数") int size,
+            @RequestParam(required = false) @Parameter(description = "状态：0-待支付, 1-已支付, 2-已完成, 3-已取消") Integer status) {
+        return JsonResult.ok(familiarizationRecordService.pageAll(new Page<>(page, size), status));
     }
 
     @RequireRole(3)

@@ -1,6 +1,7 @@
 package com.homework.driveman.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.entity.PaymentRecord;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -54,4 +55,28 @@ public interface PaymentRecordMapper extends BaseMapper<PaymentRecord> {
             "WHERE p.status = 0 AND p.is_deleted = 0 AND u.is_deleted = 0 " +
             "ORDER BY p.create_time DESC")
     List<Map<String, Object>> selectOutstandingList();
+
+    /** 分页查询支付记录（含学员姓名），支持按学员ID、业务类型、状态筛选 */
+    @Select("<script>" +
+            "SELECT p.*, u.real_name AS student_name " +
+            "FROM payment_record p " +
+            "LEFT JOIN user u ON p.student_id = u.user_id " +
+            "WHERE p.is_deleted = 0 " +
+            "  <if test='studentId != null'>AND p.student_id = #{studentId}</if> " +
+            "  <if test='bizType != null and bizType != \"\"'>AND p.biz_type = #{bizType}</if> " +
+            "  <if test='status != null'>AND p.status = #{status}</if> " +
+            "ORDER BY p.create_time DESC" +
+            "</script>")
+    Page<Map<String, Object>> selectPageWithDetails(Page<?> page,
+                                                    @Param("studentId") Integer studentId,
+                                                    @Param("bizType") String bizType,
+                                                    @Param("status") Integer status);
+
+    /** 分页查询欠费清单（含学员姓名、电话、车型） */
+    @Select("SELECT p.*, u.real_name AS student_name, u.phone AS student_phone, u.license_type " +
+            "FROM payment_record p " +
+            "JOIN user u ON p.student_id = u.user_id " +
+            "WHERE p.status = 0 AND p.is_deleted = 0 AND u.is_deleted = 0 " +
+            "ORDER BY p.create_time DESC")
+    Page<Map<String, Object>> selectPageOutstanding(Page<?> page);
 }

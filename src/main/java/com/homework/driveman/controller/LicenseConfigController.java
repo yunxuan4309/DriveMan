@@ -1,10 +1,12 @@
 package com.homework.driveman.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.LicenseConfig;
 import com.homework.driveman.service.ILicenseConfigService;
 import com.homework.driveman.web.JsonResult;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -23,10 +25,13 @@ public class LicenseConfigController {
     private ILicenseConfigService licenseConfigService;
 
     @RequireRole(3)
-    @Operation(summary = "查询所有车型配置")
+    @Operation(summary = "分页查询车型配置", description = "支持按车型筛选，分页返回车型配置列表")
     @GetMapping
-    public JsonResult<List<LicenseConfig>> list() {
-        return JsonResult.ok(licenseConfigService.list());
+    public JsonResult<Page<LicenseConfig>> list(
+            @RequestParam(defaultValue = "1") @Parameter(description = "页码") int page,
+            @RequestParam(defaultValue = "10") @Parameter(description = "每页条数") int size,
+            @RequestParam(required = false) @Parameter(description = "车型筛选（C1/C2/...）") String licenseType) {
+        return JsonResult.ok(licenseConfigService.pageWithDetails(new Page<>(page, size), licenseType));
     }
 
     @RequireRole(3)
