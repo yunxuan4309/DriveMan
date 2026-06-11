@@ -4,6 +4,7 @@ import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.dto.UpdateTimeSlotsDTO;
 import com.homework.driveman.entity.Appointment;
 import com.homework.driveman.entity.Coach;
+import com.homework.driveman.entity.CoachSchedule;
 import com.homework.driveman.entity.CoachApplication;
 import com.homework.driveman.entity.StudentCoach;
 import com.homework.driveman.entity.TrainingRecord;
@@ -16,6 +17,7 @@ import com.homework.driveman.mapper.TrainingRecordMapper;
 import com.homework.driveman.service.IAppointmentService;
 import com.homework.driveman.service.ICoachPortalService;
 import com.homework.driveman.service.ICoachVehicleApplicationService;
+import com.homework.driveman.service.ICoachScheduleService;
 import com.homework.driveman.service.IRetakeTrainingService;
 import com.homework.driveman.service.IUserService;
 import com.homework.driveman.utils.CurrentUser;
@@ -71,6 +73,9 @@ public class CoachPortalController {
 
     @Autowired
     private IRetakeTrainingService retakeTrainingService;
+
+    @Autowired
+    private ICoachScheduleService coachScheduleService;
 
     /**
      * 从当前登录用户中提取 coachId（coach 表主键）
@@ -438,7 +443,32 @@ public class CoachPortalController {
         return JsonResult.ok(retakeTrainingService.listByCoach(coachId));
     }
 
-    // ==================== 12. 可预约时间段结构化管理 ====================
+    // ==================== 12. 排班管理（教练端） ====================
+
+    @RequireRole(2)
+    @Operation(summary = "提交排班申请", description = "教练提交排班申请（含冲突检测），提交后由管理员审核。")
+    @PostMapping("/schedules")
+    public JsonResult<Void> applySchedule(HttpServletRequest request,
+                                          @RequestBody CoachSchedule schedule) {
+        Integer coachId = resolveCoachId(request);
+        schedule.setCoachId(coachId);
+        coachScheduleService.apply(schedule);
+        return JsonResult.ok();
+    }
+
+    @RequireRole(2)
+    @Operation(summary = "查看本人的排班记录", description = "返回当前教练的所有排班申请记录")
+    @GetMapping("/schedules")
+    public JsonResult<List<CoachSchedule>> listMySchedules(HttpServletRequest request) {
+        Integer coachId = resolveCoachId(request);
+        List<CoachSchedule> list = coachScheduleService.lambdaQuery()
+                .eq(CoachSchedule::getCoachId, coachId)
+                .orderByDesc(CoachSchedule::getApplyTime)
+                .list();
+        return JsonResult.ok(list);
+    }
+
+    // ==================== 13. 可预约时间段结构化管理 ====================
 
     @Operation(summary = "获取可预约时间段列表")
     @GetMapping("/time-slots")

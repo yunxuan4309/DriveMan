@@ -70,7 +70,13 @@ public class FamiliarizationRecordServiceImpl implements IFamiliarizationRecordS
                     "该场次仅限 " + session.getLicenseType() + " 车型，您的车型为 " + student.getLicenseType());
         }
 
-        // 4. 教练车模式 → 获取学员当前绑定的教练
+        // 4. 校验合场科目合法性：仅科目二（场地驾驶）和科目三（道路驾驶）需要合场
+        if (session.getSubject() == null || (session.getSubject() != 2 && session.getSubject() != 3)) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                    "科目" + session.getSubject() + "为理论考试，无需合场练习。只有科目二（场地驾驶）和科目三（道路驾驶）需要合场");
+        }
+
+        // 5. 教练车模式 → 获取学员当前绑定的教练
         Integer coachId = null;
         if (carType == 1) {
             StudentCoach sc = studentCoachMapper.selectOne(
@@ -87,16 +93,19 @@ public class FamiliarizationRecordServiceImpl implements IFamiliarizationRecordS
 
         // 5. 查询 fee_standard 定价（按车型+科目+用车类型唯一匹配）
         String descTag = (carType == 1) ? "合场(教练车)" : "合场(考试车)";
-        FeeStandard fee = feeStandardService.lambdaQuery()
+        List<FeeStandard> feeList = feeStandardService.lambdaQuery()
                 .eq(FeeStandard::getLicenseType, student.getLicenseType())
                 .eq(FeeStandard::getSubject, session.getSubject())
                 .eq(FeeStandard::getDescription, descTag)
-                .one();
-        if (fee == null) {
+                .list();
+        if (feeList.isEmpty()) {
             throw new ServiceException(ServiceCode.ERROR_NOT_FOUND,
                     "未配置 " + student.getLicenseType() + " 科目" + session.getSubject()
-                            + " 的合场费用标准（" + descTag + "），请联系管理员");
+                            + " 的合场费用（" + descTag + "），请管理员在【费用标准管理 → fee-standards】页面为 "
+                            + student.getLicenseType() + " 的科目" + session.getSubject()
+                            + " 添加" + descTag + "费用标准");
         }
+        FeeStandard fee = feeList.get(0);
 
         // 6. 创建合场记录（待支付）
         FamiliarizationRecord record = new FamiliarizationRecord();
@@ -194,6 +203,12 @@ public class FamiliarizationRecordServiceImpl implements IFamiliarizationRecordS
                 .filter(m -> m.get("student_id") != null
                         && ((Number) m.get("student_id")).intValue() == studentId)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public Page<Map<String, Object>> pageMyRecords(Page<?> page, Integer studentId,
+                                                    Integer status, String startDate, String endDate) {
+        return familiarizationRecordMapper.selectMyPageWithDetails(page, studentId, status, startDate, endDate);
     }
 
     @Override

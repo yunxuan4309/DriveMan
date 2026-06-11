@@ -60,4 +60,29 @@ public interface FamiliarizationRecordMapper extends BaseMapper<FamiliarizationR
             "LEFT JOIN user u ON c.user_id = u.user_id " +
             "WHERE fr.id = #{id} AND fr.is_deleted = 0")
     Map<String, Object> selectByIdWithDetails(@Param("id") Integer id);
+
+    /** 分页查询学员本人的合场记录，支持按状态、创建时间范围筛选 */
+    @Select("<script>" +
+            "SELECT " +
+            "  fr.*, " +
+            "  s.exam_date, s.start_time, s.location AS venue_name, s.license_type, " +
+            "  stu.real_name AS student_name, " +
+            "  u.real_name AS coach_name " +
+            "FROM familiarization_record fr " +
+            "JOIN exam_session s ON fr.exam_session_id = s.id " +
+            "LEFT JOIN user stu ON fr.student_id = stu.user_id " +
+            "LEFT JOIN coach c ON fr.coach_id = c.coach_id " +
+            "LEFT JOIN user u ON c.user_id = u.user_id " +
+            "WHERE fr.is_deleted = 0 AND s.is_deleted = 0 " +
+            "  AND fr.student_id = #{studentId} " +
+            "  <if test='status != null'>AND fr.status = #{status}</if> " +
+            "  <if test='startDate != null'>AND fr.create_time &gt;= #{startDate}</if> " +
+            "  <if test='endDate != null'>AND fr.create_time &lt;= #{endDate}</if> " +
+            "ORDER BY fr.create_time DESC" +
+            "</script>")
+    Page<Map<String, Object>> selectMyPageWithDetails(Page<?> page,
+                                                       @Param("studentId") Integer studentId,
+                                                       @Param("status") Integer status,
+                                                       @Param("startDate") String startDate,
+                                                       @Param("endDate") String endDate);
 }

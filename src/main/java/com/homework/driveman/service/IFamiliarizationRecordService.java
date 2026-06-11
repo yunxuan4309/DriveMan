@@ -38,4 +38,15 @@ public interface IFamiliarizationRecordService {
      * @param status 可选，按状态筛选
      */
     Page<Map<String, Object>> pageAll(Page<?> page, Integer status);
+
+    /**
+     * 分页查询学员本人的合场记录，支持按状态、创建时间范围筛选
+     * @param page      分页参数
+     * @param studentId 学员ID
+     * @param status    可选，按状态筛选
+     * @param startDate 可选，创建时间起始（含）
+     * @param endDate   可选，创建时间结束（含）
+     */
+    Page<Map<String, Object>> pageMyRecords(Page<?> page, Integer studentId,
+                                             Integer status, String startDate, String endDate);
 }

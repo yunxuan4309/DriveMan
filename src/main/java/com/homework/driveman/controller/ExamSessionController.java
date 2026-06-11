@@ -29,15 +29,25 @@ public class ExamSessionController {
     private IExamSessionService examSessionService;
 
     @Operation(summary = "分页查询考试场次",
-            description = "所有登录用户可调用，可按科目或车型筛选")
+            description = "所有登录用户可调用，可按科目、车型、日期范围、考试地点等条件组合筛选。参数为空时返回全部数据兼容旧行为。")
     @GetMapping
     public JsonResult<Page<ExamSession>> list(@RequestParam(defaultValue = "1") int page,
                                               @RequestParam(defaultValue = "10") int size,
                                               @RequestParam(required = false) Integer subject,
-                                              @RequestParam(required = false) String licenseType) {
+                                              @RequestParam(required = false) String licenseType,
+                                              @RequestParam(required = false) String examDateStart,
+                                              @RequestParam(required = false) String examDateEnd,
+                                              @RequestParam(required = false) String location) {
+        // 日期参数提前解析，避免 LocalDate.parse(null) 抛 NPE
+        LocalDate startDate = examDateStart != null ? LocalDate.parse(examDateStart) : null;
+        LocalDate endDate = examDateEnd != null ? LocalDate.parse(examDateEnd) : null;
+
         LambdaQueryWrapper<ExamSession> wrapper = new LambdaQueryWrapper<ExamSession>()
                 .eq(subject != null, ExamSession::getSubject, subject)
                 .eq(licenseType != null, ExamSession::getLicenseType, licenseType)
+                .like(location != null && !location.isEmpty(), ExamSession::getLocation, location)
+                .ge(startDate != null, ExamSession::getExamDate, startDate)
+                .le(endDate != null, ExamSession::getExamDate, endDate)
                 .orderByAsc(ExamSession::getExamDate);
         return JsonResult.ok(examSessionService.page(new Page<>(page, size), wrapper));
     }

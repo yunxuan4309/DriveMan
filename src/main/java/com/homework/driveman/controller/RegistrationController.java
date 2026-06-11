@@ -101,11 +101,12 @@ public class RegistrationController {
                     "exam_ticket", userId);
 
             // 审核通过时，根据学员报考车型的全包套餐价自动生成待支付账单
-            FeeStandard packageFee = feeStandardService.lambdaQuery()
+            java.util.List<FeeStandard> packageFees = feeStandardService.lambdaQuery()
                     .eq(FeeStandard::getLicenseType, user.getLicenseType())
                     .isNull(FeeStandard::getSubject)
-                    .one();
-            if (packageFee != null) {
+                    .list();
+            if (!packageFees.isEmpty()) {
+                FeeStandard packageFee = packageFees.get(0);
                 paymentRecordService.autoCreate(userId, "registration_fee", userId,
                         packageFee.getAmount(),
                         user.getLicenseType() + " " + packageFee.getDescription());

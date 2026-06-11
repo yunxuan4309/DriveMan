@@ -54,11 +54,19 @@ public class FamiliarizationController {
     }
 
     @RequireRole(1)
-    @Operation(summary = "我的合场记录", description = "查看自己的合场记录列表（含场次信息、教练姓名）")
+    @Operation(summary = "我的合场记录（分页+条件查询）",
+            description = "分页查询自己的合场记录列表，支持按状态、创建时间范围筛选")
     @GetMapping("/my")
-    public JsonResult<List<Map<String, Object>>> getMyRecords(HttpServletRequest request) {
+    public JsonResult<Page<Map<String, Object>>> getMyRecords(
+            @RequestParam(defaultValue = "1") @Parameter(description = "页码") int page,
+            @RequestParam(defaultValue = "10") @Parameter(description = "每页条数") int size,
+            @RequestParam(required = false) @Parameter(description = "状态筛选：0-待支付, 1-已支付, 2-已完成, 3-已取消") Integer status,
+            @RequestParam(required = false) @Parameter(description = "创建时间起始（含），格式 yyyy-MM-dd HH:mm:ss") String startDate,
+            @RequestParam(required = false) @Parameter(description = "创建时间结束（含），格式 yyyy-MM-dd HH:mm:ss") String endDate,
+            HttpServletRequest request) {
         CurrentUser currentUser = (CurrentUser) request.getAttribute("currentUser");
-        return JsonResult.ok(familiarizationRecordService.listMyRecords(currentUser.getUserId()));
+        return JsonResult.ok(familiarizationRecordService.pageMyRecords(
+                new Page<>(page, size), currentUser.getUserId(), status, startDate, endDate));
     }
 
     // ==================== 管理员端接口 ====================

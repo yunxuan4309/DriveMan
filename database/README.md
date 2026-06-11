@@ -16,7 +16,8 @@ database/
 │   ├── upgrade_coach_application.sql # coach_application 表扩展——支持教练主动移交学员
 │   ├── upgrade_retake_fee.sql       # 二次培训流程：is_retake + retake_training_record 表
 │   ├── upgrade_physical_exam_license.sql # 新增体检申请 + 增驾申请两张表
-    │   └── upgrade_venue_unified.sql   # 场地统一管理（exam_venue → venue 合并）
+│   ├── upgrade_venue_unified.sql   # 场地统一管理（exam_venue → venue 合并）
+│   ├── upgrade_familiarization_fee.sql # 补充合场费用标准（B1/C5车型）
 └── test/
     └── test_data.sql               # 测试数据补充
 ```

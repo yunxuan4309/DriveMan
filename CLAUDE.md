@@ -44,7 +44,8 @@ DriveMan/
 │   │   ├── upgrade_physical_exam_license.sql # 体检+增驾申请表
 │   │   ├── upgrade_venue_unified.sql   # 场地统一管理（exam_venue → venue）
 │   │   ├── upgrade_schedule_vehicle.sql # 排班管理 + 教练车车辆管理
-│   │   └── upgrade_disability_special.sql # 残疾信息 + 特殊人群记录表
+│   │   ├── upgrade_disability_special.sql # 残疾信息 + 特殊人群记录表
+│   │   └── upgrade_familiarization_fee.sql # 补充合场费用标准
 │   └── test/
 │       └── test_data.sql            # 测试数据补充
 │
