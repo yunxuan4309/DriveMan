@@ -125,13 +125,13 @@ public class PaymentRecordServiceImpl implements IPaymentRecordService {
     }
 
     @Override
-    public Page<Map<String, Object>> pageList(Page<?> page, Integer studentId, String bizType, Integer status) {
-        return paymentRecordMapper.selectPageWithDetails(page, studentId, bizType, status);
+    public Page<Map<String, Object>> pageList(Page<?> page, Integer studentId, String keyword, String bizType, Integer status) {
+        return paymentRecordMapper.selectPageWithDetails(page, studentId, keyword, bizType, status);
     }
 
     @Override
-    public Page<Map<String, Object>> pageOutstanding(Page<?> page) {
-        return paymentRecordMapper.selectPageOutstanding(page);
+    public Page<Map<String, Object>> pageOutstanding(Page<?> page, String keyword, String phone, String licenseType, String bizType) {
+        return paymentRecordMapper.selectPageOutstanding(page, keyword, phone, licenseType, bizType);
     }
 
     @Override
