@@ -1,5 +1,6 @@
 package com.homework.driveman.service.impl;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.homework.driveman.entity.LicenseUpgrade;
 import com.homework.driveman.entity.User;
@@ -13,10 +14,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.Period;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -225,6 +228,14 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
         }
 
         log.info("增驾考试成绩录入: id={}, examStatus={}", id, examStatus);
+    }
+
+    @Override
+    public Page<Map<String, Object>> pageSearch(Page<?> page, String keyword, String originalLicense,
+                                                 String targetLicense, Integer status, Integer examStatus,
+                                                 LocalDateTime createTimeStart, LocalDateTime createTimeEnd) {
+        return baseMapper.selectPageWithDetails(page, keyword, originalLicense,
+                targetLicense, status, examStatus, createTimeStart, createTimeEnd);
     }
 
     // ==================== 校验方法 ====================

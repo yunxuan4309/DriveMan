@@ -1,17 +1,21 @@
 package com.homework.driveman.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.LicenseUpgrade;
 import com.homework.driveman.service.ILicenseUpgradeService;
 import com.homework.driveman.utils.CurrentUser;
 import com.homework.driveman.web.JsonResult;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 增驾申请控制器 — 学员端提交增驾申请，管理员审核
@@ -57,13 +61,23 @@ public class LicenseUpgradeController {
     // ==================== 管理员端接口 ====================
 
     @RequireRole(3)
-    @Operation(summary = "查询所有增驾申请", description = "管理员查看所有增驾申请")
+    @Operation(summary = "分页查询增驾申请",
+            description = "含学员姓名，支持学员姓名/原车型/目标车型/审核状态/考试状态/提交时间范围搜索")
     @GetMapping
-    public JsonResult<List<LicenseUpgrade>> listAll() {
-        List<LicenseUpgrade> list = licenseUpgradeService.lambdaQuery()
-                .orderByDesc(LicenseUpgrade::getCreateTime)
-                .list();
-        return JsonResult.ok(list);
+    public JsonResult<Page<Map<String, Object>>> listAll(
+            @RequestParam(defaultValue = "1") @Parameter(description = "页码") int page,
+            @RequestParam(defaultValue = "10") @Parameter(description = "每页条数") int size,
+            @RequestParam(required = false) @Parameter(description = "学员姓名关键字") String keyword,
+            @RequestParam(required = false) @Parameter(description = "原车型") String originalLicense,
+            @RequestParam(required = false) @Parameter(description = "目标车型") String targetLicense,
+            @RequestParam(required = false) @Parameter(description = "审核状态：0-待审核,1-通过,2-不通过") Integer status,
+            @RequestParam(required = false) @Parameter(description = "考试状态：0-待考试,1-通过,2-不通过") Integer examStatus,
+            @RequestParam(required = false) @Parameter(description = "提交时间起 yyyy-MM-dd") String createTimeStart,
+            @RequestParam(required = false) @Parameter(description = "提交时间止 yyyy-MM-dd") String createTimeEnd) {
+        LocalDateTime start = createTimeStart != null ? LocalDateTime.parse(createTimeStart + "T00:00:00") : null;
+        LocalDateTime end = createTimeEnd != null ? LocalDateTime.parse(createTimeEnd + "T23:59:59") : null;
+        return JsonResult.ok(licenseUpgradeService.pageSearch(new Page<>(page, size),
+                keyword, originalLicense, targetLicense, status, examStatus, start, end));
     }
 
     @RequireRole(3)
