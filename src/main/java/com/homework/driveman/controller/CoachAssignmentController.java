@@ -49,16 +49,33 @@ public class CoachAssignmentController {
 
     @RequireRole({1,3})
     @Operation(summary = "自动推荐教练",
-            description = "根据学员报考车型匹配准教车型，按评分降序返回前 N 条")
+            description = "根据学员报考车型匹配准教车型，按评分降序返回前 N 条，含教练姓名等信息")
     @GetMapping("/recommend")
-    public JsonResult<List<Coach>> recommend(@RequestParam Integer studentId,
+    public JsonResult<List<Map<String, Object>>> recommend(@RequestParam Integer studentId,
                                              @RequestParam(defaultValue = "5") int topN) {
         User student = userMapper.selectById(studentId);
         if (student == null || student.getLicenseType() == null) {
             throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "学员不存在或未填写报考车型");
         }
         List<Coach> recommended = coachService.recommend(student.getLicenseType(), topN);
-        return JsonResult.ok(recommended);
+
+        List<Map<String, Object>> result = recommended.stream().map(c -> {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("coachId", c.getCoachId());
+            map.put("userId", c.getUserId());
+            map.put("rating", c.getRating());
+            map.put("coachYears", c.getCoachYears());
+            map.put("vehicleType", c.getVehicleType());
+            map.put("availableTime", c.getAvailableTime());
+            User user = userMapper.selectById(c.getUserId());
+            if (user != null) {
+                map.put("realName", user.getRealName());
+                map.put("phone", user.getPhone());
+            }
+            return map;
+        }).collect(Collectors.toList());
+
+        return JsonResult.ok(result);
     }
 
     @RequireRole(3)

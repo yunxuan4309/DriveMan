@@ -64,4 +64,4 @@ knife4j:
 # 自定义配置: 文件上传存储根目录（相对项目根路径）
 drive:
   upload:
-    path: ./upload-files
+    path: D:\java\DriveMan\upload-files

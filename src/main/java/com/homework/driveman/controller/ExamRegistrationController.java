@@ -253,16 +253,23 @@ public class ExamRegistrationController {
         return JsonResult.ok(examRegistrationService.pageWithDetails(new Page<>(page, size), status, keyword));
     }
 
-    @Operation(summary = "根据学员ID查询其考试报名记录",
-            description = "返回报名记录及关联的考试日期、地点等场次信息")
+    @Operation(summary = "根据学员ID查询其考试报名记录（分页）",
+            description = "返回报名记录及关联的考试日期、地点等场次信息，支持按状态和科目筛选")
     @GetMapping("/student/{studentId}")
-    public JsonResult<List<Map<String, Object>>> listByStudent(@PathVariable Integer studentId) {
-        List<ExamRegistration> list = examRegistrationService.lambdaQuery()
-                .eq(ExamRegistration::getStudentId, studentId)
-                .orderByDesc(ExamRegistration::getApplyTime)
-                .list();
+    public JsonResult<Page<Map<String, Object>>> listByStudent(@PathVariable Integer studentId,
+                                                               @RequestParam(defaultValue = "1") int page,
+                                                               @RequestParam(defaultValue = "10") int size,
+                                                               @RequestParam(required = false) Integer status,
+                                                               @RequestParam(required = false) Integer subject) {
+        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ExamRegistration> wrapper =
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ExamRegistration>()
+                        .eq(ExamRegistration::getStudentId, studentId)
+                        .eq(status != null, ExamRegistration::getStatus, status)
+                        .eq(subject != null, ExamRegistration::getSubject, subject)
+                        .orderByDesc(ExamRegistration::getApplyTime);
+        Page<ExamRegistration> regPage = examRegistrationService.page(new Page<>(page, size), wrapper);
 
-        List<Map<String, Object>> result = list.stream().map(reg -> {
+        List<Map<String, Object>> result = regPage.getRecords().stream().map(reg -> {
             Map<String, Object> map = new java.util.LinkedHashMap<>();
             map.put("id", reg.getId());
             map.put("studentId", reg.getStudentId());
@@ -277,7 +284,6 @@ public class ExamRegistrationController {
             map.put("applyTime", reg.getApplyTime());
             map.put("auditTime", reg.getAuditTime());
 
-            // 关联场次信息
             if (reg.getSessionId() != null) {
                 ExamSession session = examSessionService.getById(reg.getSessionId());
                 if (session != null) {
@@ -285,16 +291,15 @@ public class ExamRegistrationController {
                     map.put("startTime", session.getStartTime());
                     map.put("location", session.getLocation());
                     map.put("licenseType", session.getLicenseType());
-                    map.put("totalQuota", session.getTotalQuota());
-                    map.put("remainingQuota", session.getRemainingQuota());
-                    map.put("venueName", session.getLocation());
                 }
             }
 
             return map;
         }).collect(java.util.stream.Collectors.toList());
 
-        return JsonResult.ok(result);
+        Page<Map<String, Object>> resultPage = new Page<>(regPage.getCurrent(), regPage.getSize(), regPage.getTotal());
+        resultPage.setRecords(result);
+        return JsonResult.ok(resultPage);
     }
 
     @RequireRole(1)

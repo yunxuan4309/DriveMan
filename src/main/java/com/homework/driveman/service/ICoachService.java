@@ -25,9 +25,9 @@ public interface ICoachService extends IService<Coach> {
     List<StudentInfoVO> getMyStudents(Integer coachId);
 
     /**
-     * 设置教练空闲时间
+     * 设置教练常规空闲时段（仅供学员参考）
      * @param coachId       教练ID
-     * @param availableTime 空闲时间 JSON 字符串
+     * @param availableTime 常规空闲时段 JSON 字符串
      */
     void setAvailableTime(Integer coachId, String availableTime);
 

@@ -23,7 +23,7 @@ public class Coach {
     /** 综合评分 (1.0-5.0) */
     private BigDecimal rating;
 
-    /** 空闲时间 (JSON 格式) */
+    /** 常规空闲时段 (JSON 格式，仅供学员参考) */
     private String availableTime;
 
     /** 执教年限 */

@@ -32,13 +32,17 @@ public class CoachController {
     private UserMapper userMapper;
 
     @Operation(summary = "分页查询教练",
-            description = "返回教练信息及关联的用户真实姓名、用户名、手机号；支持按用户名、姓名模糊搜索及准驾车型筛选")
+            description = "返回教练信息及关联的用户真实姓名、用户名、手机号；支持按用户名、姓名模糊搜索、准驾车型、评分范围、教龄范围筛选")
     @GetMapping
     public JsonResult<Page<Map<String, Object>>> list(@RequestParam(defaultValue = "1") int page,
                                                       @RequestParam(defaultValue = "10") int size,
                                                       @RequestParam(required = false) String username,
                                                       @RequestParam(required = false) String realName,
-                                                      @RequestParam(required = false) String vehicleType) {
+                                                      @RequestParam(required = false) String vehicleType,
+                                                      @RequestParam(required = false) Integer ratingMin,
+                                                      @RequestParam(required = false) Integer ratingMax,
+                                                      @RequestParam(required = false) Integer coachYearsMin,
+                                                      @RequestParam(required = false) Integer coachYearsMax) {
         // 如果有用户名/姓名模糊搜索，先查 user 表获取匹配的教练 user_id
         List<Integer> filterUserIds = null;
         if ((username != null && !username.isEmpty()) || (realName != null && !realName.isEmpty())) {
@@ -62,6 +66,18 @@ public class CoachController {
         }
         if (vehicleType != null && !vehicleType.isEmpty()) {
             coachWrapper.apply("FIND_IN_SET({0}, vehicle_type)", vehicleType);
+        }
+        if (ratingMin != null) {
+            coachWrapper.ge(Coach::getRating, ratingMin);
+        }
+        if (ratingMax != null) {
+            coachWrapper.le(Coach::getRating, ratingMax);
+        }
+        if (coachYearsMin != null) {
+            coachWrapper.ge(Coach::getCoachYears, coachYearsMin);
+        }
+        if (coachYearsMax != null) {
+            coachWrapper.le(Coach::getCoachYears, coachYearsMax);
         }
         Page<Coach> coachPage = coachService.page(new Page<>(page, size), coachWrapper);
 

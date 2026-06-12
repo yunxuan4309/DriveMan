@@ -6,7 +6,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-@Schema(description = "批量设置可预约时间段")
+@Schema(description = "批量设置常规空闲时间段（仅供学员参考）")
 public class UpdateTimeSlotsDTO {
 
     @NotNull(message = "时间段列表不能为空")

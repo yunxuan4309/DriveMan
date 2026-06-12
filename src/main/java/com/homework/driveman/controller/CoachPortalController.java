@@ -245,10 +245,10 @@ public class CoachPortalController {
         return JsonResult.ok(result);
     }
 
-    // ==================== 5. 设置空闲时间（更新 JSON 字段） ====================
+    // ==================== 5. 设置常规空闲时段（参考） ====================
 
     @RequireRole(2)
-    @Operation(summary = "设置空闲时间", description = "教练设置/更新自己的空闲时间，以 JSON 格式存入 available_time 字段")
+    @Operation(summary = "设置常规空闲时段", description = "教练设置/更新自己的常规空闲时段（仅供学员参考，实际约课以排班为准），以 JSON 格式存入 available_time 字段")
     @PutMapping("/available-time")
     public JsonResult<Void> setAvailableTime(HttpServletRequest request,
                                              @RequestBody Map<String, Object> availableTime) {
@@ -268,7 +268,7 @@ public class CoachPortalController {
     }
 
     @RequireRole(2)
-    @Operation(summary = "查看空闲时间", description = "获取当前教练的空闲时间 JSON 数据")
+    @Operation(summary = "查看常规空闲时段", description = "获取当前教练的常规空闲时段 JSON 数据（仅供学员参考）")
     @GetMapping("/available-time")
     public JsonResult<Map<String, Object>> getAvailableTime(HttpServletRequest request) {
         Integer coachId = resolveCoachId(request);
@@ -409,44 +409,49 @@ public class CoachPortalController {
     // ==================== 10. 教练申请移交学员（含审核流程） ====================
 
     @RequireRole(2)
-    @Operation(summary = "教练申请移交学员",
-            description = "教练因故无法继续带教学员，发起将某学员移交给另一位指定教练的申请，由管理员审核")
+    @Operation(summary = "教练申请移交学员（支持批量）",
+            description = "教练因故无法继续带教学员，发起将一个或多个学员移交给另一位指定教练的申请，由管理员审核。studentIds 逗号分隔。")
     @PostMapping("/student-transfers")
     public JsonResult<Void> submitStudentTransfer(
             HttpServletRequest request,
-            @RequestParam Integer studentId,
+            @RequestParam String studentIds,
             @RequestParam Integer targetCoachId,
             @RequestParam String reason) {
         Integer sourceCoachId = resolveCoachId(request);
 
-        // 校验该学员是否是该教练名下的绑定学员
-        Long bindingCount = studentCoachMapper.selectCount(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<StudentCoach>()
-                        .eq(StudentCoach::getStudentId, studentId)
-                        .eq(StudentCoach::getCoachId, sourceCoachId)
-                        .eq(StudentCoach::getStatus, 1));
-        if (bindingCount == 0) {
-            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "该学员不是您名下的学员");
-        }
+        String[] ids = studentIds.split(",");
+        for (String idStr : ids) {
+            Integer studentId = Integer.parseInt(idStr.trim());
 
-        // 校验是否已有待审核的移交申请
-        Long pendingCount = coachApplicationMapper.selectCount(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CoachApplication>()
-                        .eq(CoachApplication::getStudentId, studentId)
-                        .eq(CoachApplication::getSourceCoachId, sourceCoachId)
-                        .eq(CoachApplication::getStatus, 0));
-        if (pendingCount > 0) {
-            throw new ServiceException(ServiceCode.ERROR_CONFLICT, "该学员的移交申请已提交，请等待管理员处理");
-        }
+            Long bindingCount = studentCoachMapper.selectCount(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<StudentCoach>()
+                            .eq(StudentCoach::getStudentId, studentId)
+                            .eq(StudentCoach::getCoachId, sourceCoachId)
+                            .eq(StudentCoach::getStatus, 1));
+            if (bindingCount == 0) {
+                throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                        "学员 ID=" + studentId + " 不是您名下的学员");
+            }
 
-        CoachApplication application = new CoachApplication();
-        application.setStudentId(studentId);
-        application.setCoachId(targetCoachId);
-        application.setSourceCoachId(sourceCoachId);
-        application.setTransferReason(reason);
-        application.setStatus(0);
-        application.setApplyTime(LocalDateTime.now());
-        coachApplicationMapper.insert(application);
+            Long pendingCount = coachApplicationMapper.selectCount(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CoachApplication>()
+                            .eq(CoachApplication::getStudentId, studentId)
+                            .eq(CoachApplication::getSourceCoachId, sourceCoachId)
+                            .eq(CoachApplication::getStatus, 0));
+            if (pendingCount > 0) {
+                throw new ServiceException(ServiceCode.ERROR_CONFLICT,
+                        "学员 ID=" + studentId + " 的移交申请已提交，请等待管理员处理");
+            }
+
+            CoachApplication application = new CoachApplication();
+            application.setStudentId(studentId);
+            application.setCoachId(targetCoachId);
+            application.setSourceCoachId(sourceCoachId);
+            application.setTransferReason(reason);
+            application.setStatus(0);
+            application.setApplyTime(LocalDateTime.now());
+            coachApplicationMapper.insert(application);
+        }
         return JsonResult.ok();
     }
 
@@ -474,6 +479,15 @@ public class CoachPortalController {
 
             User student = userService.getById(app.getStudentId());
             map.put("studentName", student != null ? student.getRealName() : "未知");
+
+            // 查询目标教练姓名
+            Coach targetCoach = coachMapper.selectById(app.getCoachId());
+            if (targetCoach != null) {
+                User targetUser = userService.getById(targetCoach.getUserId());
+                map.put("targetCoachName", targetUser != null ? targetUser.getRealName() : "未知");
+            } else {
+                map.put("targetCoachName", "未知");
+            }
 
             return map;
         }).collect(Collectors.toList());
@@ -577,16 +591,16 @@ public class CoachPortalController {
         return JsonResult.ok(result);
     }
 
-    // ==================== 13. 可预约时间段结构化管理 ====================
+    // ==================== 13. 常规空闲时段结构化管理（仅供学员参考） ====================
 
-    @Operation(summary = "获取可预约时间段列表")
+    @Operation(summary = "获取常规空闲时段列表（参考）")
     @GetMapping("/time-slots")
     public JsonResult<List<TimeSlotDTO>> getTimeSlots(HttpServletRequest request) {
         Integer coachId = resolveCoachId(request);
         return JsonResult.ok(coachPortalService.getTimeSlots(coachId));
     }
 
-    @Operation(summary = "批量设置可预约时间段（全量替换）")
+    @Operation(summary = "批量设置常规空闲时段（全量替换）")
     @PutMapping("/time-slots")
     public JsonResult<Void> setTimeSlots(@RequestBody @Valid UpdateTimeSlotsDTO dto,
                                          HttpServletRequest request) {
@@ -595,7 +609,7 @@ public class CoachPortalController {
         return JsonResult.ok();
     }
 
-    @Operation(summary = "添加一个可预约时间段")
+    @Operation(summary = "添加一个常规空闲时段")
     @PostMapping("/time-slots")
     public JsonResult<Void> addTimeSlot(@RequestBody @Valid TimeSlotDTO slot,
                                         HttpServletRequest request) {
@@ -604,7 +618,7 @@ public class CoachPortalController {
         return JsonResult.ok();
     }
 
-    @Operation(summary = "删除一个可预约时间段")
+    @Operation(summary = "删除一个常规空闲时段")
     @DeleteMapping("/time-slots")
     public JsonResult<Void> removeTimeSlot(@RequestBody @Valid TimeSlotDTO slot,
                                            HttpServletRequest request) {

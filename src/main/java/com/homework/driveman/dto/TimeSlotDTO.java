@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 @Data
-@Schema(description = "可预约时间段")
+@Schema(description = "常规空闲时间段（仅供学员参考）")
 public class TimeSlotDTO {
 
     @NotBlank(message = "星期几不能为空")

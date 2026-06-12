@@ -5,10 +5,10 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
-@Schema(description = "设置空闲时间请求参数")
+@Schema(description = "设置常规空闲时段请求参数（仅供学员参考）")
 public class AvailableTimeDTO {
 
-    @NotBlank(message = "空闲时间不能为空")
-    @Schema(description = "空闲时间（JSON格式）", example = "{\"monday\":[\"09:00-12:00\",\"14:00-17:00\"],\"wednesday\":[\"09:00-12:00\"]}")
+    @NotBlank(message = "常规空闲时段不能为空")
+    @Schema(description = "常规空闲时段（JSON格式）", example = "{\"monday\":[\"09:00-12:00\",\"14:00-17:00\"],\"wednesday\":[\"09:00-12:00\"]}")
     private String availableTime;
 }

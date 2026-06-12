@@ -243,7 +243,7 @@ public class CoachPortalServiceImpl implements ICoachPortalService {
             }
             return slots;
         } catch (Exception e) {
-            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "解析空闲时间失败");
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "解析常规空闲时段失败");
         }
     }
 
@@ -269,7 +269,7 @@ public class CoachPortalServiceImpl implements ICoachPortalService {
             coach.setAvailableTime(json);
             coachMapper.updateById(coach);
         } catch (Exception e) {
-            throw new ServiceException(ServiceCode.ERROR_INSERT, "保存空闲时间失败");
+            throw new ServiceException(ServiceCode.ERROR_INSERT, "保存常规空闲时段失败");
         }
     }
 

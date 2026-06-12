@@ -81,7 +81,7 @@ public class AppointmentController {
 
     @RequireRole(1)
     @Operation(summary = "学员新增约课",
-            description = "只能在自己的教练已批准的排班时段内约课。studentId 从 JWT 自动获取，不受请求体控制")
+            description = "必须在教练已批准的排班时段内约课，关联排班 scheduleId 为必填。studentId 从 JWT 自动获取。")
     @PostMapping
     public JsonResult<Map<String, Object>> create(HttpServletRequest request,
                                                    @RequestBody Appointment appointment) {
@@ -102,49 +102,46 @@ public class AppointmentController {
             throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "约课时间必须在未来");
         }
 
-        // 校验排班约束：如果关联了排班，需校验归属+时段+名额
+        // 强制要求关联排班
         Integer scheduleId = appointment.getScheduleId();
-        if (scheduleId != null) {
-            CoachSchedule schedule = scheduleService.getById(scheduleId);
-            if (schedule == null) {
-                throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "排班记录不存在");
-            }
-            if (schedule.getStatus() != 1) {
-                throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "该排班时段不可约");
-            }
-
-            StudentCoach binding = studentCoachMapper.selectOne(
-                    new LambdaQueryWrapper<StudentCoach>()
-                            .eq(StudentCoach::getStudentId, user.getUserId())
-                            .eq(StudentCoach::getStatus, 1));
-            if (binding == null) {
-                throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "您还没有绑定教练，请先申请分配教练");
-            }
-            if (!schedule.getCoachId().equals(binding.getCoachId())) {
-                throw new ServiceException(ServiceCode.ERROR_FORBIDDEN, "只能预约您教练的排班时段");
-            }
-
-            if (appointment.getStartTime().isBefore(schedule.getStartTime())
-                    || appointment.getEndTime().isAfter(schedule.getEndTime())) {
-                throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "约课时间超出教练排班时段范围");
-            }
-
-            if (schedule.getBookedCount() >= schedule.getMaxStudents()) {
-                throw new ServiceException(ServiceCode.ERROR_CONFLICT, "该时段已约满");
-            }
-
-            schedule.setBookedCount(schedule.getBookedCount() + 1);
-            scheduleService.updateById(schedule);
-        } else {
-            StudentCoach binding = studentCoachMapper.selectOne(
-                    new LambdaQueryWrapper<StudentCoach>()
-                            .eq(StudentCoach::getStudentId, user.getUserId())
-                            .eq(StudentCoach::getCoachId, appointment.getCoachId())
-                            .eq(StudentCoach::getStatus, 1));
-            if (binding == null) {
-                throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "只能预约您绑定教练的课程");
-            }
+        if (scheduleId == null) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "请选择教练的排班时段进行约课");
         }
+
+        CoachSchedule schedule = scheduleService.getById(scheduleId);
+        if (schedule == null) {
+            throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "排班记录不存在");
+        }
+        if (schedule.getStatus() != 1) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "该排班时段不可约");
+        }
+
+        // 校验学员-教练绑定关系
+        StudentCoach binding = studentCoachMapper.selectOne(
+                new LambdaQueryWrapper<StudentCoach>()
+                        .eq(StudentCoach::getStudentId, user.getUserId())
+                        .eq(StudentCoach::getStatus, 1));
+        if (binding == null) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "您还没有绑定教练，请先申请分配教练");
+        }
+        if (!schedule.getCoachId().equals(binding.getCoachId())) {
+            throw new ServiceException(ServiceCode.ERROR_FORBIDDEN, "只能预约您教练的排班时段");
+        }
+
+        // 约课时间必须在排班时间范围内
+        if (appointment.getStartTime().isBefore(schedule.getStartTime())
+                || appointment.getEndTime().isAfter(schedule.getEndTime())) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "约课时间超出教练排班时段范围");
+        }
+
+        // 名额校验
+        if (schedule.getBookedCount() >= schedule.getMaxStudents()) {
+            throw new ServiceException(ServiceCode.ERROR_CONFLICT, "该时段已约满");
+        }
+
+        // 扣减名额
+        schedule.setBookedCount(schedule.getBookedCount() + 1);
+        scheduleService.updateById(schedule);
 
         // 检查学员自身时间冲突
         long conflictCount = appointmentService.lambdaQuery()

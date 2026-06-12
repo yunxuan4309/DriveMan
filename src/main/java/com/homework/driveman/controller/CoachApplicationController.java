@@ -4,16 +4,21 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.config.RequireRole;
+import com.homework.driveman.constant.AppointmentStatus;
+import com.homework.driveman.entity.Appointment;
 import com.homework.driveman.entity.Coach;
 import com.homework.driveman.entity.CoachApplication;
+import com.homework.driveman.entity.CoachSchedule;
 import com.homework.driveman.entity.StudentCoach;
 import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
+import com.homework.driveman.mapper.AppointmentMapper;
 import com.homework.driveman.mapper.CoachApplicationMapper;
 import com.homework.driveman.mapper.CoachMapper;
 import com.homework.driveman.mapper.StudentCoachMapper;
 import com.homework.driveman.mapper.UserMapper;
 import com.homework.driveman.service.ICoachApplicationService;
+import com.homework.driveman.service.ICoachScheduleService;
 import com.homework.driveman.web.JsonResult;
 import com.homework.driveman.web.ServiceCode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,7 +28,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -51,6 +58,12 @@ public class  CoachApplicationController {
 
     @Autowired
     private ICoachApplicationService coachApplicationService;
+
+    @Autowired
+    private AppointmentMapper appointmentMapper;
+
+    @Autowired
+    private ICoachScheduleService scheduleService;
 
     @RequireRole(1)
     @Operation(summary = "学员提交教练选择申请（含更换教练）",
@@ -88,19 +101,19 @@ public class  CoachApplicationController {
 
     @RequireRole(3)
     @Operation(summary = "审核教练申请",
-            description = "pass=true 审核通过（自动写入 student_coach 绑定），pass=false 拒绝并填写原因")
+            description = "pass=true 审核通过：自动取消学员与旧教练的进行中约课并释放排班名额，然后绑定新教练。pass=false 拒绝。")
     @Transactional
     @PutMapping("/{id}/audit")
-    public JsonResult<Void> audit(@PathVariable Integer id,
-                                  @RequestParam boolean pass,
-                                  @RequestParam(required = false) String reason) {
+    public JsonResult<Map<String, Object>> audit(@PathVariable Integer id,
+                                                   @RequestParam boolean pass,
+                                                   @RequestParam(required = false) String reason) {
         CoachApplication application = coachApplicationMapper.selectById(id);
         if (application == null) {
             throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "申请记录不存在");
         }
 
         if (pass) {
-            // 如果是教练移交申请，校验发起教练是否仍与学员有绑定关系
+            // 校验发起教练是否仍与学员有绑定关系（移交场景）
             if (application.getSourceCoachId() != null) {
                 Long bindingCount = studentCoachMapper.selectCount(
                         new LambdaQueryWrapper<StudentCoach>()
@@ -113,11 +126,52 @@ public class  CoachApplicationController {
                 }
             }
 
-            // 审核通过 → 解绑旧教练 → 绑定新教练
-            application.setStatus(1);
-            application.setAuditTime(LocalDateTime.now());
+            // 找到学员当前的绑定教练
+            StudentCoach oldBinding = studentCoachMapper.selectOne(
+                    new LambdaQueryWrapper<StudentCoach>()
+                            .eq(StudentCoach::getStudentId, application.getStudentId())
+                            .eq(StudentCoach::getStatus, 1));
+            Integer oldCoachId = oldBinding != null ? oldBinding.getCoachId() : null;
 
-            // 将学员的旧绑定置为无效（如有）
+            // 清理该学员与旧教练的进行中约课（pending/confirmed）
+            List<Map<String, Object>> cancelledDetails = new ArrayList<>();
+            String oldCoachName = "未知";
+            if (oldCoachId != null) {
+                Coach oldCoach = coachMapper.selectById(oldCoachId);
+                if (oldCoach != null) {
+                    User oldCoachUser = userMapper.selectById(oldCoach.getUserId());
+                    oldCoachName = oldCoachUser != null ? oldCoachUser.getRealName() : "未知";
+                }
+
+                List<Appointment> oldAppointments = appointmentMapper.selectList(
+                        new LambdaQueryWrapper<Appointment>()
+                                .eq(Appointment::getStudentId, application.getStudentId())
+                                .eq(Appointment::getCoachId, oldCoachId)
+                                .in(Appointment::getStatus, AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED));
+
+                for (Appointment apt : oldAppointments) {
+                    // 释放排班名额
+                    if (apt.getScheduleId() != null) {
+                        CoachSchedule schedule = scheduleService.getById(apt.getScheduleId());
+                        if (schedule != null && schedule.getBookedCount() > 0) {
+                            schedule.setBookedCount(schedule.getBookedCount() - 1);
+                            scheduleService.updateById(schedule);
+                        }
+                    }
+                    // 标记为取消
+                    apt.setStatus(AppointmentStatus.CANCELLED);
+                    apt.setCancelReason("学员更换教练，系统自动取消");
+                    appointmentMapper.updateById(apt);
+
+                    Map<String, Object> detail = new LinkedHashMap<>();
+                    detail.put("appointmentId", apt.getId());
+                    detail.put("startTime", apt.getStartTime().toString());
+                    detail.put("endTime", apt.getEndTime().toString());
+                    cancelledDetails.add(detail);
+                }
+            }
+
+            // 解绑旧教练
             studentCoachMapper.update(null,
                     new LambdaUpdateWrapper<StudentCoach>()
                             .eq(StudentCoach::getStudentId, application.getStudentId())
@@ -131,14 +185,34 @@ public class  CoachApplicationController {
             sc.setBindTime(LocalDateTime.now());
             sc.setStatus(1);
             studentCoachMapper.insert(sc);
+
+            application.setStatus(1);
+            application.setAuditTime(LocalDateTime.now());
+            coachApplicationMapper.updateById(application);
+
+            // 返回取消详情
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("cancelledCount", cancelledDetails.size());
+            result.put("cancelledAppointments", cancelledDetails);
+            result.put("oldCoachName", oldCoachName);
+
+            // 新教练姓名
+            Coach newCoach = coachMapper.selectById(application.getCoachId());
+            String newCoachName = "未知";
+            if (newCoach != null) {
+                User newCoachUser = userMapper.selectById(newCoach.getUserId());
+                newCoachName = newCoachUser != null ? newCoachUser.getRealName() : "未知";
+            }
+            result.put("newCoachName", newCoachName);
+
+            return JsonResult.ok(result);
         } else {
-            // 拒绝
             application.setStatus(2);
             application.setAuditTime(LocalDateTime.now());
             application.setAuditReason(reason);
+            coachApplicationMapper.updateById(application);
         }
-        coachApplicationMapper.updateById(application);
-        return JsonResult.ok();
+        return JsonResult.ok(null);
     }
 
     @RequireRole(3)

@@ -35,28 +35,28 @@ public interface ICoachPortalService {
     List<Map<String, Object>> getStudentExamRegistrations(Integer coachId);
 
     /**
-     * 获取教练的可预约时间段列表（结构化）
+     * 获取教练的常规空闲时段列表（结构化，仅供学员参考）
      * @param coachId 教练ID
      * @return 时间段列表
      */
     List<TimeSlotDTO> getTimeSlots(Integer coachId);
 
     /**
-     * 批量设置可预约时间段（全量替换）
+     * 批量设置常规空闲时段（全量替换）
      * @param coachId 教练ID
      * @param timeSlots 新的时间段列表
      */
     void setTimeSlots(Integer coachId, List<TimeSlotDTO> timeSlots);
 
     /**
-     * 添加一个可预约时间段
+     * 添加一个常规空闲时段
      * @param coachId 教练ID
      * @param slot 时间段
      */
     void addTimeSlot(Integer coachId, TimeSlotDTO slot);
 
     /**
-     * 删除一个可预约时间段
+     * 删除一个常规空闲时段
      * @param coachId 教练ID
      * @param slot 要删除的时间段
      */
