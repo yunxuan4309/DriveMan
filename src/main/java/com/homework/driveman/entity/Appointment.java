@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 
 /**
  * 约课表 — 学员预约教练课程记录
- * status: 0-待确认, 1-已确认, 2-已完成, 3-已取消
+ * status: 0-待确认, 1-已确认, 2-已拒绝, 3-已取消, 4-已完成
  */
 @Data
 @TableName("appointment")

@@ -10,11 +10,15 @@ import com.homework.driveman.entity.CoachApplication;
 import com.homework.driveman.entity.StudentCoach;
 import com.homework.driveman.entity.TrainingRecord;
 import com.homework.driveman.entity.User;
+import com.homework.driveman.entity.Vehicle;
+import com.homework.driveman.entity.Venue;
 import com.homework.driveman.exception.ServiceException;
 import com.homework.driveman.mapper.CoachApplicationMapper;
 import com.homework.driveman.mapper.CoachMapper;
 import com.homework.driveman.mapper.StudentCoachMapper;
 import com.homework.driveman.mapper.TrainingRecordMapper;
+import com.homework.driveman.mapper.VehicleMapper;
+import com.homework.driveman.mapper.VenueMapper;
 import com.homework.driveman.service.IAppointmentService;
 import com.homework.driveman.service.ICoachPortalService;
 import com.homework.driveman.service.ICoachVehicleApplicationService;
@@ -78,6 +82,12 @@ public class CoachPortalController {
 
     @Autowired
     private ICoachScheduleService coachScheduleService;
+
+    @Autowired
+    private VehicleMapper vehicleMapper;
+
+    @Autowired
+    private VenueMapper venueMapper;
 
     /**
      * 从当前登录用户中提取 coachId（coach 表主键）
@@ -167,7 +177,7 @@ public class CoachPortalController {
         return JsonResult.ok();
     }
 
-    // ==================== 4. 约课确认/拒绝 ====================
+    // ==================== 4. 约课确认/拒绝/完成 + 分页列表 ====================
 
     @RequireRole(2)
     @Operation(summary = "确认约课", description = "教练确认学员的约课请求，将状态从「待确认」更新为「已确认」")
@@ -175,43 +185,64 @@ public class CoachPortalController {
     public JsonResult<Void> confirmAppointment(HttpServletRequest request,
                                                @PathVariable Integer id) {
         Integer coachId = resolveCoachId(request);
-        Appointment appointment = appointmentService.getById(id);
-        if (appointment == null) {
-            throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "约课记录不存在");
-        }
-        // 校验该约课是否属于当前教练
-        if (!appointment.getCoachId().equals(coachId)) {
-            throw new ServiceException(ServiceCode.ERROR_FORBIDDEN, "该约课不属于您");
-        }
-        if (appointment.getStatus() != 0) {
-            throw new ServiceException(ServiceCode.ERROR_CONFLICT, "该约课已处理，无法重复操作");
-        }
-        appointment.setStatus(1); // 已确认
-        appointmentService.updateById(appointment);
+        appointmentService.confirmAppointment(id, coachId);
         return JsonResult.ok();
     }
 
     @RequireRole(2)
-    @Operation(summary = "拒绝约课", description = "教练拒绝学员的约课请求，将状态更新为「已取消」，需填写拒绝原因")
+    @Operation(summary = "拒绝约课", description = "教练拒绝学员的约课请求，将状态更新为「已拒绝」，需填写拒绝原因")
     @PutMapping("/appointments/{id}/reject")
     public JsonResult<Void> rejectAppointment(HttpServletRequest request,
                                               @PathVariable Integer id,
                                               @RequestParam String reason) {
         Integer coachId = resolveCoachId(request);
-        Appointment appointment = appointmentService.getById(id);
-        if (appointment == null) {
-            throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "约课记录不存在");
-        }
-        if (!appointment.getCoachId().equals(coachId)) {
-            throw new ServiceException(ServiceCode.ERROR_FORBIDDEN, "该约课不属于您");
-        }
-        if (appointment.getStatus() != 0) {
-            throw new ServiceException(ServiceCode.ERROR_CONFLICT, "该约课已处理，无法重复操作");
-        }
-        appointment.setStatus(3); // 已取消
-        appointment.setCancelReason(reason);
-        appointmentService.updateById(appointment);
+        appointmentService.rejectAppointment(id, coachId, reason);
         return JsonResult.ok();
+    }
+
+    @RequireRole(2)
+    @Operation(summary = "完成课程", description = "教练将已确认的约课标记为「已完成」")
+    @PutMapping("/appointments/{id}/complete")
+    public JsonResult<Void> completeAppointment(HttpServletRequest request,
+                                                @PathVariable Integer id) {
+        Integer coachId = resolveCoachId(request);
+        appointmentService.completeAppointment(id, coachId);
+        return JsonResult.ok();
+    }
+
+    @RequireRole(2)
+    @Operation(summary = "分页查询约课列表", description = "返回当前教练的全部约课记录（含学员姓名），支持按状态筛选")
+    @GetMapping("/appointments")
+    public JsonResult<Page<Map<String, Object>>> listMyAppointments(
+            HttpServletRequest request,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Integer status) {
+        Integer coachId = resolveCoachId(request);
+        var wrapper = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Appointment>()
+                .eq(Appointment::getCoachId, coachId)
+                .eq(status != null, Appointment::getStatus, status)
+                .orderByDesc(Appointment::getCreateTime);
+        Page<Appointment> rawPage = appointmentService.page(new Page<>(page, size), wrapper);
+        // 补充学员姓名
+        List<Map<String, Object>> enriched = rawPage.getRecords().stream().map(a -> {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("id", a.getId());
+            map.put("studentId", a.getStudentId());
+            map.put("coachId", a.getCoachId());
+            map.put("scheduleId", a.getScheduleId());
+            map.put("startTime", a.getStartTime());
+            map.put("endTime", a.getEndTime());
+            map.put("status", a.getStatus());
+            map.put("cancelReason", a.getCancelReason());
+            map.put("createTime", a.getCreateTime());
+            User student = userService.getById(a.getStudentId());
+            map.put("studentName", student != null ? student.getRealName() : null);
+            return map;
+        }).collect(Collectors.toList());
+        Page<Map<String, Object>> result = new Page<>(rawPage.getCurrent(), rawPage.getSize(), rawPage.getTotal());
+        result.setRecords(enriched);
+        return JsonResult.ok(result);
     }
 
     // ==================== 5. 设置空闲时间（更新 JSON 字段） ====================
@@ -322,16 +353,31 @@ public class CoachPortalController {
     // ==================== 9. 查看待确认的约课列表 ====================
 
     @RequireRole(2)
-    @Operation(summary = "查看待确认约课", description = "列出当前教练所有状态为「待确认」的约课请求")
+    @Operation(summary = "查看待确认约课", description = "列出当前教练所有状态为「待确认」的约课请求，含学员姓名")
     @GetMapping("/appointments/pending")
-    public JsonResult<List<Appointment>> listPendingAppointments(HttpServletRequest request) {
+    public JsonResult<List<Map<String, Object>>> listPendingAppointments(HttpServletRequest request) {
         Integer coachId = resolveCoachId(request);
         List<Appointment> list = appointmentService.lambdaQuery()
                 .eq(Appointment::getCoachId, coachId)
                 .eq(Appointment::getStatus, 0)
                 .orderByDesc(Appointment::getCreateTime)
                 .list();
-        return JsonResult.ok(list);
+        List<Map<String, Object>> result = list.stream().map(a -> {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("id", a.getId());
+            map.put("studentId", a.getStudentId());
+            map.put("coachId", a.getCoachId());
+            map.put("scheduleId", a.getScheduleId());
+            map.put("startTime", a.getStartTime());
+            map.put("endTime", a.getEndTime());
+            map.put("status", a.getStatus());
+            map.put("cancelReason", a.getCancelReason());
+            map.put("createTime", a.getCreateTime());
+            User student = userService.getById(a.getStudentId());
+            map.put("studentName", student != null ? student.getRealName() : null);
+            return map;
+        }).collect(Collectors.toList());
+        return JsonResult.ok(result);
     }
 
     // ==================== 9. 查看教练的约课日历（按日期范围筛选） ====================
@@ -483,6 +529,52 @@ public class CoachPortalController {
         Integer coachId = resolveCoachId(request);
         coachScheduleService.cancel(id, coachId);
         return JsonResult.ok();
+    }
+
+    @RequireRole(2)
+    @Operation(summary = "查看已通过排班及预约概览",
+            description = "返回当前教练所有已审核通过的排班，及每个排班的学员预约情况（含学员姓名、预约状态、剩余名额）")
+    @GetMapping("/schedules/approved")
+    public JsonResult<List<Map<String, Object>>> listApprovedSchedules(HttpServletRequest request) {
+        Integer coachId = resolveCoachId(request);
+
+        List<CoachSchedule> schedules = coachScheduleService.lambdaQuery()
+                .eq(CoachSchedule::getCoachId, coachId)
+                .eq(CoachSchedule::getStatus, 1)
+                .orderByDesc(CoachSchedule::getStartTime)
+                .list();
+
+        List<Map<String, Object>> result = schedules.stream().map(s -> {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("scheduleId", s.getId());
+            map.put("licenseType", s.getLicenseType());
+            map.put("startTime", s.getStartTime());
+            map.put("endTime", s.getEndTime());
+            map.put("maxStudents", s.getMaxStudents());
+            map.put("bookedCount", s.getBookedCount());
+
+            Vehicle vehicle = vehicleMapper.selectById(s.getVehicleId());
+            map.put("plateNumber", vehicle != null ? vehicle.getPlateNumber() : null);
+
+            Venue venue = venueMapper.selectById(s.getVenueId());
+            map.put("venueName", venue != null ? venue.getName() : null);
+
+            List<Appointment> appointments = appointmentService.lambdaQuery()
+                    .eq(Appointment::getScheduleId, s.getId())
+                    .list();
+            List<Map<String, Object>> bookingList = appointments.stream().map(a -> {
+                Map<String, Object> bm = new LinkedHashMap<>();
+                bm.put("appointmentId", a.getId());
+                bm.put("status", a.getStatus());
+                User student = userService.getById(a.getStudentId());
+                bm.put("studentName", student != null ? student.getRealName() : null);
+                return bm;
+            }).collect(Collectors.toList());
+            map.put("appointments", bookingList);
+            return map;
+        }).collect(Collectors.toList());
+
+        return JsonResult.ok(result);
     }
 
     // ==================== 13. 可预约时间段结构化管理 ====================
