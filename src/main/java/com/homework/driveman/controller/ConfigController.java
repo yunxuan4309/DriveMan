@@ -1,15 +1,15 @@
 package com.homework.driveman.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.Config;
 import com.homework.driveman.service.IConfigService;
 import com.homework.driveman.web.JsonResult;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 /**
  * 系统配置管理控制器 — 管理员 CRUD 操作 config 表
@@ -23,10 +23,13 @@ public class ConfigController {
     private IConfigService configService;
 
     @RequireRole(3)
-    @Operation(summary = "查询所有配置项")
+    @Operation(summary = "分页查询配置项",
+            description = "支持关键字模糊匹配 config_key / config_value / description")
     @GetMapping
-    public JsonResult<List<Config>> list() {
-        return JsonResult.ok(configService.list());
+    public JsonResult<Page<Config>> list(@RequestParam(defaultValue = "1") @Parameter(description = "页码") int page,
+                                          @RequestParam(defaultValue = "10") @Parameter(description = "每页条数") int size,
+                                          @RequestParam(required = false) @Parameter(description = "关键字，模糊匹配键/值/说明") String keyword) {
+        return JsonResult.ok(configService.pageSearch(new Page<>(page, size), keyword));
     }
 
     @RequireRole(3)

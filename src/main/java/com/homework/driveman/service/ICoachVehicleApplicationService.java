@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.homework.driveman.entity.CoachVehicleApplication;
 
-import java.util.List;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 /** 教练准教车型变更业务接口 */
@@ -27,19 +27,16 @@ public interface ICoachVehicleApplicationService extends IService<CoachVehicleAp
     void audit(Integer id, boolean approved, String auditReason);
 
     /**
-     * 查询所有待审核申请（含教练名称）
+     * 分页查询待审核申请（含教练姓名），支持多条件搜索
      */
-    List<Map<String, Object>> listPending();
+    Page<Map<String, Object>> pagePending(Page<?> page, String keyword, String currentVehicleType,
+                                           String requestedVehicleType,
+                                           LocalDateTime applyTimeStart, LocalDateTime applyTimeEnd);
 
     /**
-     * 分页查询所有申请记录（含教练名称），支持按教练姓名、车型、状态筛选
-     * @param page        分页参数
-     * @param coachName   教练姓名关键词（可选）
-     * @param vehicleType 车型（可选）
-     * @param status      状态（可选）
+     * 分页查询全部申请记录（含教练姓名），支持多条件搜索+审核时间范围
      */
-    Page<Map<String, Object>> listAll(Page<CoachVehicleApplication> page,
-                                      String coachName,
-                                      String vehicleType,
-                                      Integer status);
+    Page<Map<String, Object>> pageAll(Page<?> page, String keyword, String vehicleType,
+                                       Integer status,
+                                       LocalDateTime auditTimeStart, LocalDateTime auditTimeEnd);
 }

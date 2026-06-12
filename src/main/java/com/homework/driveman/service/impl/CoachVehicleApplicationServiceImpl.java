@@ -6,12 +6,10 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.homework.driveman.entity.Coach;
 import com.homework.driveman.entity.CoachVehicleApplication;
 import com.homework.driveman.entity.LicenseConfig;
-import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
 import com.homework.driveman.mapper.CoachMapper;
 import com.homework.driveman.mapper.CoachVehicleApplicationMapper;
 import com.homework.driveman.mapper.LicenseConfigMapper;
-import com.homework.driveman.mapper.UserMapper;
 import com.homework.driveman.service.ICoachVehicleApplicationService;
 import com.homework.driveman.web.ServiceCode;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,9 +30,6 @@ public class CoachVehicleApplicationServiceImpl
 
     @Autowired
     private CoachMapper coachMapper;
-
-    @Autowired
-    private UserMapper userMapper;
 
     @Autowired
     private LicenseConfigMapper licenseConfigMapper;
@@ -136,106 +130,18 @@ public class CoachVehicleApplicationServiceImpl
     }
 
     @Override
-    public List<Map<String, Object>> listPending() {
-        List<CoachVehicleApplication> list = baseMapper.selectList(
-                new LambdaQueryWrapper<CoachVehicleApplication>()
-                        .eq(CoachVehicleApplication::getStatus, 0)
-                        .orderByDesc(CoachVehicleApplication::getApplyTime));
-
-        return enrichWithCoachName(list);
+    public Page<Map<String, Object>> pagePending(Page<?> page, String keyword, String currentVehicleType,
+                                                  String requestedVehicleType,
+                                                  LocalDateTime applyTimeStart, LocalDateTime applyTimeEnd) {
+        return baseMapper.selectPagePending(page, keyword, currentVehicleType,
+                requestedVehicleType, applyTimeStart, applyTimeEnd);
     }
 
     @Override
-    public Page<Map<String, Object>> listAll(Page<CoachVehicleApplication> page,
-                                             String coachName,
-                                             String vehicleType,
-                                             Integer status) {
-        LambdaQueryWrapper<CoachVehicleApplication> wrapper = new LambdaQueryWrapper<>();
-
-        // 按教练姓名搜索
-        if (coachName != null && !coachName.isEmpty()) {
-            List<Integer> coachUserIds = userMapper.selectList(
-                    new LambdaQueryWrapper<User>()
-                            .like(User::getRealName, coachName)
-                            .select(User::getUserId)
-            ).stream().map(User::getUserId).toList();
-            if (coachUserIds.isEmpty()) {
-                return new Page<>(page.getCurrent(), page.getSize(), 0);
-            }
-            // 通过 coach 表的 user_id 关联查找 coach_id
-            List<Integer> matchedCoachIds = coachMapper.selectList(
-                    new LambdaQueryWrapper<Coach>()
-                            .in(Coach::getUserId, coachUserIds)
-                            .select(Coach::getCoachId)
-            ).stream().map(Coach::getCoachId).toList();
-            if (matchedCoachIds.isEmpty()) {
-                return new Page<>(page.getCurrent(), page.getSize(), 0);
-            }
-            wrapper.in(CoachVehicleApplication::getCoachId, matchedCoachIds);
-        }
-
-        // 按车型筛选（申请车型中包含指定值）
-        if (vehicleType != null && !vehicleType.isEmpty()) {
-            wrapper.like(CoachVehicleApplication::getRequestedVehicleType, vehicleType);
-        }
-
-        // 按状态筛选
-        if (status != null) {
-            wrapper.eq(CoachVehicleApplication::getStatus, status);
-        }
-
-        wrapper.orderByDesc(CoachVehicleApplication::getApplyTime);
-        Page<CoachVehicleApplication> rawPage = baseMapper.selectPage(page, wrapper);
-
-        List<Map<String, Object>> records = enrichWithCoachName(rawPage.getRecords());
-
-        Page<Map<String, Object>> resultPage = new Page<>(
-                rawPage.getCurrent(), rawPage.getSize(), rawPage.getTotal());
-        resultPage.setRecords(records);
-        return resultPage;
-    }
-
-    /** 批量填充教练姓名 */
-    private List<Map<String, Object>> enrichWithCoachName(List<CoachVehicleApplication> list) {
-        if (list.isEmpty()) return List.of();
-
-        // 获取 coach_id 列表 -> 查 coach 表 -> 查 user 表
-        Set<Integer> coachIds = list.stream()
-                .map(CoachVehicleApplication::getCoachId)
-                .collect(Collectors.toSet());
-        List<Coach> coaches = coachMapper.selectBatchIds(coachIds);
-        Map<Integer, Coach> coachMap = coaches.stream()
-                .collect(Collectors.toMap(Coach::getCoachId, c -> c, (a, b) -> a));
-
-        Set<Integer> userIds = coaches.stream()
-                .map(Coach::getUserId)
-                .collect(Collectors.toSet());
-        List<User> users = userMapper.selectBatchIds(userIds);
-        Map<Integer, User> userMap = users.stream()
-                .collect(Collectors.toMap(User::getUserId, u -> u, (a, b) -> a));
-
-        // 组装
-        return list.stream().map(app -> {
-            Map<String, Object> map = new LinkedHashMap<>();
-            map.put("id", app.getId());
-            map.put("coachId", app.getCoachId());
-
-            Coach coach = coachMap.get(app.getCoachId());
-            if (coach != null) {
-                User user = userMap.get(coach.getUserId());
-                map.put("coachName", user != null ? user.getRealName() : null);
-            } else {
-                map.put("coachName", null);
-            }
-
-            map.put("currentVehicleType", app.getCurrentVehicleType());
-            map.put("requestedVehicleType", app.getRequestedVehicleType());
-            map.put("applyReason", app.getApplyReason());
-            map.put("status", app.getStatus());
-            map.put("auditReason", app.getAuditReason());
-            map.put("applyTime", app.getApplyTime());
-            map.put("auditTime", app.getAuditTime());
-            return map;
-        }).collect(Collectors.toList());
+    public Page<Map<String, Object>> pageAll(Page<?> page, String keyword, String vehicleType,
+                                              Integer status,
+                                              LocalDateTime auditTimeStart, LocalDateTime auditTimeEnd) {
+        return baseMapper.selectPageAll(page, keyword, vehicleType, status,
+                auditTimeStart, auditTimeEnd);
     }
 }

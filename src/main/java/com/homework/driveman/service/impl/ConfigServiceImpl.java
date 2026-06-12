@@ -1,5 +1,6 @@
 package com.homework.driveman.service.impl;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.homework.driveman.entity.Config;
 import com.homework.driveman.mapper.ConfigMapper;
@@ -31,5 +32,10 @@ public class ConfigServiceImpl extends ServiceImpl<ConfigMapper, Config> impleme
         config.setConfigValue(value);
         config.setDescription(description);
         saveOrUpdate(config);
+    }
+
+    @Override
+    public Page<Config> pageSearch(Page<?> page, String keyword) {
+        return baseMapper.selectPageWithKeyword(page, keyword);
     }
 }
