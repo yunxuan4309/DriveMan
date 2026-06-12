@@ -19,6 +19,7 @@ import com.homework.driveman.mapper.StudentCoachMapper;
 import com.homework.driveman.mapper.UserMapper;
 import com.homework.driveman.service.ICoachApplicationService;
 import com.homework.driveman.service.ICoachScheduleService;
+import com.homework.driveman.service.IPhysicalExamService;
 import com.homework.driveman.web.JsonResult;
 import com.homework.driveman.web.ServiceCode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -64,6 +65,9 @@ public class  CoachApplicationController {
 
     @Autowired
     private ICoachScheduleService scheduleService;
+
+    @Autowired
+    private IPhysicalExamService physicalExamService;
 
     @RequireRole(1)
     @Operation(summary = "学员提交教练选择申请（含更换教练）",
@@ -114,6 +118,9 @@ public class  CoachApplicationController {
             throw new ServiceException(ServiceCode.ERROR_FORBIDDEN,
                     "该教练的准教车型（" + coach.getVehicleType() + "）不包含您报考的" + student.getLicenseType() + "车型");
         }
+
+        // 检查体检是否不合格
+        physicalExamService.checkPassed(studentId);
 
         CoachApplication application = new CoachApplication();
         application.setStudentId(studentId);

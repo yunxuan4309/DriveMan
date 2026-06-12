@@ -16,6 +16,7 @@ import com.homework.driveman.mapper.StudentCoachMapper;
 import com.homework.driveman.mapper.UserMapper;
 import com.homework.driveman.service.IAppointmentService;
 import com.homework.driveman.service.ICoachScheduleService;
+import com.homework.driveman.service.IPhysicalExamService;
 import com.homework.driveman.utils.CurrentUser;
 import com.homework.driveman.web.JsonResult;
 import com.homework.driveman.web.ServiceCode;
@@ -54,6 +55,9 @@ public class AppointmentController {
 
     @Autowired
     private CoachMapper coachMapper;
+
+    @Autowired
+    private IPhysicalExamService physicalExamService;
 
     private CurrentUser getCurrentUser(HttpServletRequest request) {
         return (CurrentUser) request.getAttribute("currentUser");
@@ -101,6 +105,9 @@ public class AppointmentController {
         if (appointment.getStartTime().isBefore(LocalDateTime.now())) {
             throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "约课时间必须在未来");
         }
+
+        // 检查体检是否不合格
+        physicalExamService.checkPassed(user.getUserId());
 
         // 强制要求关联排班
         Integer scheduleId = appointment.getScheduleId();

@@ -161,6 +161,18 @@ public class FileController {
         return JsonResult.ok(file);
     }
 
+    @RequireRole(3)
+    @Operation(summary = "按用户ID查询文件列表",
+            description = "管理员查询指定用户的所有文件，用于录入体检结果等场景选择已有文件")
+    @GetMapping("/by-user/{userId}")
+    public JsonResult<List<File>> listByUser(@PathVariable Integer userId) {
+        List<File> list = fileService.lambdaQuery()
+                .eq(File::getUserId, userId)
+                .orderByDesc(File::getCreateTime)
+                .list();
+        return JsonResult.ok(list);
+    }
+
     @Operation(summary = "管理员分页查询文件",
             description = "支持按真实姓名和角色过滤，返回分页文件列表附带用户姓名")
     @RequireRole(3)

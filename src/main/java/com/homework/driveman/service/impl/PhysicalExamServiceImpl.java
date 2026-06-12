@@ -147,6 +147,20 @@ public class PhysicalExamServiceImpl extends ServiceImpl<PhysicalExamMapper, Phy
     }
 
     @Override
+    public void checkPassed(Integer studentId) {
+        PhysicalExam exam = lambdaQuery()
+                .eq(PhysicalExam::getStudentId, studentId)
+                .eq(PhysicalExam::getStatus, 3)
+                .eq(PhysicalExam::getResult, 0)
+                .last("LIMIT 1")
+                .one();
+        if (exam != null) {
+            throw new ServiceException(ServiceCode.ERROR_FORBIDDEN,
+                    "您的体检结果为不合格，无法进行此操作，请联系管理员");
+        }
+    }
+
+    @Override
     public List<Map<String, Object>> getLocations() {
         List<Venue> venues = venueMapper.selectList(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Venue>()

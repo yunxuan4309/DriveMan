@@ -49,4 +49,10 @@ public interface IPhysicalExamService extends IService<PhysicalExam> {
      * @param status      状态（可选）
      */
     Page<Map<String, Object>> pageAll(Page<PhysicalExam> page, String studentName, Integer status);
+
+    /**
+     * 检查学员是否体检不合格（status=3 已完成 且 result=0 不合格），
+     * 不合格则抛出 ServiceException 阻止后续操作
+     */
+    void checkPassed(Integer studentId);
 }

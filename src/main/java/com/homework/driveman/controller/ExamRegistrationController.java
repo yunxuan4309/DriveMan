@@ -17,6 +17,7 @@ import com.homework.driveman.service.IExamSessionService;
 import com.homework.driveman.service.IFeeStandardService;
 import com.homework.driveman.service.IFileService;
 import com.homework.driveman.service.IPaymentRecordService;
+import com.homework.driveman.service.IPhysicalExamService;
 import com.homework.driveman.service.IPdfService;
 import com.homework.driveman.service.IUserService;
 import com.homework.driveman.utils.CurrentUser;
@@ -75,6 +76,9 @@ public class ExamRegistrationController {
     @Autowired
     private ExamRegistrationMapper examRegistrationMapper;
 
+    @Autowired
+    private IPhysicalExamService physicalExamService;
+
     /** 从 config 表读取合格分数线，默认 90 */
     private int getPassScore() {
         String val = configService.getConfigValue("exam_pass_score");
@@ -97,6 +101,9 @@ public class ExamRegistrationController {
         if (!currentUser.getUserId().equals(studentId)) {
             throw new ServiceException(ServiceCode.ERROR_FORBIDDEN, "只能为自己报名考试");
         }
+
+        // 检查体检是否不合格
+        physicalExamService.checkPassed(studentId);
 
         ExamSession session = examSessionService.getById(sessionId);
         if (session == null) {
