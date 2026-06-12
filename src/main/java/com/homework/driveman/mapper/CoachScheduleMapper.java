@@ -18,6 +18,7 @@ public interface CoachScheduleMapper extends BaseMapper<CoachSchedule> {
 
     /**
      * 分页查询排班列表（含教练姓名、车牌号、场地名称）
+     * @param coachId 可选，指定教练ID时只查该教练的排班
      */
     @Select("<script>" +
             "SELECT cs.*, u.real_name AS coach_name, v.plate_number, vn.name AS venue_name " +
@@ -27,6 +28,7 @@ public interface CoachScheduleMapper extends BaseMapper<CoachSchedule> {
             "LEFT JOIN vehicle v ON cs.vehicle_id = v.id " +
             "LEFT JOIN venue vn ON cs.venue_id = vn.id " +
             "WHERE cs.is_deleted = 0 " +
+            "  <if test='coachId != null'>AND cs.coach_id = #{coachId}</if> " +
             "  <if test='keyword != null and keyword != \"\"'>AND u.real_name LIKE CONCAT('%', #{keyword}, '%')</if> " +
             "  <if test='plateNumber != null and plateNumber != \"\"'>AND v.plate_number LIKE CONCAT('%', #{plateNumber}, '%')</if> " +
             "  <if test='venueName != null and venueName != \"\"'>AND vn.name LIKE CONCAT('%', #{venueName}, '%')</if> " +
@@ -37,6 +39,7 @@ public interface CoachScheduleMapper extends BaseMapper<CoachSchedule> {
             "ORDER BY cs.start_time DESC" +
             "</script>")
     Page<Map<String, Object>> selectPageWithDetails(Page<?> page,
+                                                     @Param("coachId") Integer coachId,
                                                      @Param("keyword") String keyword,
                                                      @Param("plateNumber") String plateNumber,
                                                      @Param("venueName") String venueName,

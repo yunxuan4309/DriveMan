@@ -43,10 +43,11 @@ public interface ICoachScheduleService extends IService<CoachSchedule> {
     List<CoachSchedule> listAvailableForStudent(Integer studentId, String licenseType);
 
     /**
-     * 分页+多条件搜索排班（管理员端）
+     * 分页+多条件搜索排班
      * 返回含教练姓名、车牌号、场地名称的 Map
+     * @param coachId 可选，指定教练ID时只查该教练的排班
      */
-    Page<Map<String, Object>> pageSearch(Page<?> page, String keyword, String plateNumber,
+    Page<Map<String, Object>> pageSearch(Page<?> page, Integer coachId, String keyword, String plateNumber,
                                           String venueName, String licenseType, Integer status,
                                           LocalDateTime startDateStart, LocalDateTime startDateEnd);
 }

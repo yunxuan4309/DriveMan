@@ -64,7 +64,7 @@ public class CoachScheduleController {
         LocalDateTime startStart = startDateStart != null ? LocalDateTime.parse(startDateStart + "T00:00:00") : null;
         LocalDateTime startEnd = startDateEnd != null ? LocalDateTime.parse(startDateEnd + "T23:59:59") : null;
         return JsonResult.ok(scheduleService.pageSearch(new Page<>(page, size),
-                keyword, plateNumber, venueName, licenseType, status, startStart, startEnd));
+                null, keyword, plateNumber, venueName, licenseType, status, startStart, startEnd));
     }
 
     @RequireRole(3)

@@ -1,5 +1,6 @@
 package com.homework.driveman.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.dto.UpdateTimeSlotsDTO;
 import com.homework.driveman.entity.Appointment;
@@ -24,6 +25,7 @@ import com.homework.driveman.utils.CurrentUser;
 import com.homework.driveman.web.JsonResult;
 import com.homework.driveman.web.ServiceCode;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -457,15 +459,30 @@ public class CoachPortalController {
     }
 
     @RequireRole(2)
-    @Operation(summary = "查看本人的排班记录", description = "返回当前教练的所有排班申请记录")
+    @Operation(summary = "查看本人的排班记录（分页+多条件）",
+            description = "返回当前教练的排班申请记录，含车牌号/场地名称，支持分页及多条件筛选")
     @GetMapping("/schedules")
-    public JsonResult<List<CoachSchedule>> listMySchedules(HttpServletRequest request) {
+    public JsonResult<Page<Map<String, Object>>> listMySchedules(HttpServletRequest request,
+                                                                  @RequestParam(defaultValue = "1") int page,
+                                                                  @RequestParam(defaultValue = "10") int size,
+                                                                  @RequestParam(required = false) @Parameter(description = "培训车型") String licenseType,
+                                                                  @RequestParam(required = false) @Parameter(description = "排班状态") Integer status,
+                                                                  @RequestParam(required = false) @Parameter(description = "开始时间起 yyyy-MM-dd") String startDateStart,
+                                                                  @RequestParam(required = false) @Parameter(description = "开始时间止 yyyy-MM-dd") String startDateEnd) {
         Integer coachId = resolveCoachId(request);
-        List<CoachSchedule> list = coachScheduleService.lambdaQuery()
-                .eq(CoachSchedule::getCoachId, coachId)
-                .orderByDesc(CoachSchedule::getApplyTime)
-                .list();
-        return JsonResult.ok(list);
+        LocalDateTime startStart = startDateStart != null ? LocalDateTime.parse(startDateStart + "T00:00:00") : null;
+        LocalDateTime startEnd = startDateEnd != null ? LocalDateTime.parse(startDateEnd + "T23:59:59") : null;
+        return JsonResult.ok(coachScheduleService.pageSearch(new Page<>(page, size),
+                coachId, null, null, null, licenseType, status, startStart, startEnd));
+    }
+
+    @RequireRole(2)
+    @Operation(summary = "取消排班", description = "教练取消自己的排班申请（待审核或已通过状态可取消）")
+    @PutMapping("/schedules/{id}/cancel")
+    public JsonResult<Void> cancelSchedule(@PathVariable Integer id, HttpServletRequest request) {
+        Integer coachId = resolveCoachId(request);
+        coachScheduleService.cancel(id, coachId);
+        return JsonResult.ok();
     }
 
     // ==================== 13. 可预约时间段结构化管理 ====================

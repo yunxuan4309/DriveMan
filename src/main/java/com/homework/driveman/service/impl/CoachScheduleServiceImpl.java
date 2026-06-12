@@ -186,10 +186,10 @@ public class CoachScheduleServiceImpl extends ServiceImpl<CoachScheduleMapper, C
     }
 
     @Override
-    public Page<Map<String, Object>> pageSearch(Page<?> page, String keyword, String plateNumber,
+    public Page<Map<String, Object>> pageSearch(Page<?> page, Integer coachId, String keyword, String plateNumber,
                                                  String venueName, String licenseType, Integer status,
                                                  LocalDateTime startDateStart, LocalDateTime startDateEnd) {
-        return baseMapper.selectPageWithDetails(page, keyword, plateNumber, venueName,
+        return baseMapper.selectPageWithDetails(page, coachId, keyword, plateNumber, venueName,
                 licenseType, status, startDateStart, startDateEnd);
     }
 
