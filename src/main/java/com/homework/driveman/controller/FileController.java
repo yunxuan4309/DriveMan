@@ -169,8 +169,10 @@ public class FileController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) @Parameter(description = "用户真实姓名（模糊搜索）") String realName,
-            @RequestParam(required = false) @Parameter(description = "角色: 1-学员, 2-教练") Integer role) {
-        return JsonResult.ok(fileService.pageAdminQuery(new Page<>(page, size), realName, role));
+            @RequestParam(required = false) @Parameter(description = "角色: 1-学员, 2-教练") Integer role,
+            @RequestParam(required = false) @Parameter(description = "业务类型过滤") String bizType,
+            @RequestParam(required = false) @Parameter(description = "文件分类过滤") String fileType) {
+        return JsonResult.ok(fileService.pageAdminQuery(new Page<>(page, size), realName, role, bizType, fileType));
     }
 
     // ==================== 下载 / 预览 ====================

@@ -90,6 +90,31 @@ public class  CoachApplicationController {
             throw new ServiceException(ServiceCode.ERROR_CONFLICT, "您已绑定该教练，无需重复申请");
         }
 
+        // 校验教练的准教车型是否包含学员的报考车型
+        User student = userMapper.selectById(studentId);
+        if (student == null) {
+            throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "学员不存在");
+        }
+        if (student.getLicenseType() == null || student.getLicenseType().isEmpty()) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "您尚未选择报考车型，请先完成驾考报名");
+        }
+        Coach coach = coachMapper.selectById(coachId);
+        if (coach == null) {
+            throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "教练不存在");
+        }
+        String[] coachVehicleTypes = coach.getVehicleType().split(",");
+        boolean match = false;
+        for (String vt : coachVehicleTypes) {
+            if (vt.trim().equals(student.getLicenseType())) {
+                match = true;
+                break;
+            }
+        }
+        if (!match) {
+            throw new ServiceException(ServiceCode.ERROR_FORBIDDEN,
+                    "该教练的准教车型（" + coach.getVehicleType() + "）不包含您报考的" + student.getLicenseType() + "车型");
+        }
+
         CoachApplication application = new CoachApplication();
         application.setStudentId(studentId);
         application.setCoachId(coachId);

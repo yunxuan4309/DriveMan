@@ -35,7 +35,7 @@ public interface IPhysicalExamService extends IService<PhysicalExam> {
     /**
      * 获取可选的体检地点列表（从 venue 表查询 venue_type=3）
      */
-    List<String> getLocations();
+    List<Map<String, Object>> getLocations();
 
     /**
      * 教练查看名下学员的体检申请

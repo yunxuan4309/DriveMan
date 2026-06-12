@@ -11,6 +11,7 @@ import com.homework.driveman.service.IPaymentRecordService;
 import com.homework.driveman.service.IPdfService;
 import com.homework.driveman.service.IUserService;
 import com.homework.driveman.utils.CurrentUser;
+import com.homework.driveman.utils.JwtUtils;
 import com.homework.driveman.web.JsonResult;
 import com.homework.driveman.web.ServiceCode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -47,6 +48,9 @@ public class EnrollmentController {
 
     @Autowired
     private IFileService fileService;
+
+    @Autowired
+    private JwtUtils jwtUtils;
 
     @RequireRole({0, 1, 3})
     @Operation(summary = "查询可选报名套餐",
@@ -146,6 +150,10 @@ public class EnrollmentController {
         user.setRole(1);
         userService.updateById(user);
 
+        // 生成新 JWT（role=1），前端替换旧 token 以避免权限不足
+        String newToken = jwtUtils.generateToken(
+                new CurrentUser(user.getUserId(), user.getUsername(), 1));
+
         // 生成 PDF（报名表 + 准考证）
         String regPath = pdfService.generateRegistrationForm(user);
         fileService.saveRecord(user.getUserId(), regPath,
@@ -158,6 +166,7 @@ public class EnrollmentController {
                 "exam_ticket", user.getUserId());
 
         Map<String, Object> result = new LinkedHashMap<>();
+        result.put("token", newToken);
         result.put("role", 1);
         result.put("message", "支付成功，您已成为正式学员");
         return JsonResult.ok(result);

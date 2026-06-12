@@ -114,8 +114,8 @@ public class PhysicalExamController {
     @RequireRole({1, 3})
     @Operation(summary = "获取可选体检地点", description = "获取启用的体检地点列表（从 venue 表查询，venue_type=3），学员端用于下拉选择")
     @GetMapping("/locations")
-    public JsonResult<List<String>> getLocations() {
-        List<String> locations = physicalExamService.getLocations();
+    public JsonResult<List<Map<String, Object>>> getLocations() {
+        List<Map<String, Object>> locations = physicalExamService.getLocations();
         return JsonResult.ok(locations);
     }
 }

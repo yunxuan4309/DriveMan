@@ -69,5 +69,6 @@ public interface IFileService extends IService<File> {
      * @param role     可选，角色: 1-学员, 2-教练
      * @return 分页结果，含文件信息和上传者真实姓名
      */
-    Page<Map<String, Object>> pageAdminQuery(Page<File> page, String realName, Integer role);
+    Page<Map<String, Object>> pageAdminQuery(Page<File> page, String realName, Integer role,
+                                             String bizType, String fileType);
 }

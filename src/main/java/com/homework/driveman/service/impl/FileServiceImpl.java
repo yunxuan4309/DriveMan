@@ -8,6 +8,7 @@ import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
 import com.homework.driveman.mapper.FileMapper;
 import com.homework.driveman.mapper.UserMapper;
+import com.homework.driveman.service.IFileRequestService;
 import com.homework.driveman.service.IFileService;
 import com.homework.driveman.web.ServiceCode;
 import lombok.extern.slf4j.Slf4j;
@@ -60,6 +61,9 @@ public class FileServiceImpl extends ServiceImpl<FileMapper, File> implements IF
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private IFileRequestService fileRequestService;
 
     @Override
     public File upload(Integer userId, MultipartFile multipartFile, String fileType,
@@ -122,6 +126,11 @@ public class FileServiceImpl extends ServiceImpl<FileMapper, File> implements IF
         file.setBizId(bizId);
         file.setUploadTime(LocalDateTime.now());
         save(file);
+
+        // 如果文件关联了 bizId，尝试自动完成对应的 file_request
+        if (bizId != null) {
+            fileRequestService.markCompleted(bizId);
+        }
 
         log.info("文件上传成功: id={}, type={}, bizType={}, bizId={}, name={}",
                 file.getId(), fileType, bizType, bizId, originalName);
@@ -187,26 +196,45 @@ public class FileServiceImpl extends ServiceImpl<FileMapper, File> implements IF
     }
 
     @Override
-    public Page<Map<String, Object>> pageAdminQuery(Page<File> page, String realName, Integer role) {
-        LambdaQueryWrapper<User> userFilter = new LambdaQueryWrapper<>();
-        if (realName != null && !realName.isEmpty()) {
-            userFilter.like(User::getRealName, realName);
-        }
-        if (role != null) {
-            userFilter.eq(User::getRole, role);
-        }
-        List<User> matchedUsers = userMapper.selectList(userFilter);
-        if (matchedUsers.isEmpty()) {
-            return new Page<>(page.getCurrent(), page.getSize(), 0);
-        }
-        List<Integer> userIds = matchedUsers.stream().map(User::getUserId).toList();
-
+    public Page<Map<String, Object>> pageAdminQuery(Page<File> page, String realName, Integer role,
+                                                     String bizType, String fileType) {
         LambdaQueryWrapper<File> fileWrapper = new LambdaQueryWrapper<File>()
-                .in(File::getUserId, userIds)
                 .orderByDesc(File::getCreateTime);
+
+        // 用户筛选：合并 realName + role 到单个子查询
+        boolean needUserFilter = (realName != null && !realName.isEmpty()) || role != null;
+        if (needUserFilter) {
+            LambdaQueryWrapper<User> userWrapper = new LambdaQueryWrapper<>();
+            if (realName != null && !realName.isEmpty()) {
+                userWrapper.like(User::getRealName, realName);
+            }
+            if (role != null) {
+                userWrapper.eq(User::getRole, role);
+            }
+            userWrapper.select(User::getUserId);
+            List<Integer> userIds = userMapper.selectList(userWrapper).stream()
+                    .map(User::getUserId).toList();
+            if (userIds.isEmpty()) {
+                return new Page<>(page.getCurrent(), page.getSize(), 0);
+            }
+            fileWrapper.in(File::getUserId, userIds);
+        }
+
+        // bizType 和 fileType 筛选
+        if (bizType != null && !bizType.isEmpty()) {
+            fileWrapper.eq(File::getBizType, bizType);
+        }
+        if (fileType != null && !fileType.isEmpty()) {
+            fileWrapper.eq(File::getFileType, fileType);
+        }
+
         Page<File> filePage = baseMapper.selectPage(page, fileWrapper);
 
-        Map<Integer, String> nameMap = matchedUsers.stream()
+        // 批量查询用户名
+        Set<Integer> userIds = filePage.getRecords().stream()
+                .map(File::getUserId).collect(Collectors.toSet());
+        Map<Integer, String> nameMap = userIds.isEmpty() ? Map.of()
+                : userMapper.selectBatchIds(userIds).stream()
                 .collect(Collectors.toMap(User::getUserId, User::getRealName));
 
         List<Map<String, Object>> result = filePage.getRecords().stream().map(f -> {

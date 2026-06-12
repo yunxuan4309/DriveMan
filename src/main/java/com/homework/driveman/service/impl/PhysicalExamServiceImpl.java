@@ -147,7 +147,7 @@ public class PhysicalExamServiceImpl extends ServiceImpl<PhysicalExamMapper, Phy
     }
 
     @Override
-    public List<String> getLocations() {
+    public List<Map<String, Object>> getLocations() {
         List<Venue> venues = venueMapper.selectList(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Venue>()
                         .eq(Venue::getVenueType, 3)
@@ -157,7 +157,17 @@ public class PhysicalExamServiceImpl extends ServiceImpl<PhysicalExamMapper, Phy
         if (venues.isEmpty()) {
             return Collections.emptyList();
         }
-        return venues.stream().map(Venue::getName).collect(Collectors.toList());
+        // 按名称去重，保留第一个出现的记录
+        Map<String, Venue> unique = new LinkedHashMap<>();
+        for (Venue v : venues) {
+            unique.putIfAbsent(v.getName(), v);
+        }
+        return unique.values().stream().map(v -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", v.getId());
+            m.put("name", v.getName());
+            return m;
+        }).collect(Collectors.toList());
     }
 
     @Override

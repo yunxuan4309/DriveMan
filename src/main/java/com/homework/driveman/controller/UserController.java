@@ -1,7 +1,9 @@
 package com.homework.driveman.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
+import com.homework.driveman.mapper.UserMapper;
 import com.homework.driveman.service.IDisabilityInfoService;
 import com.homework.driveman.service.IUserService;
 import com.homework.driveman.utils.CurrentUser;
@@ -13,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
 
 /**
  * 用户通用控制器 — 仅保留当前用户信息查询和密码修改
@@ -28,6 +31,24 @@ public class UserController {
 
     @Autowired
     private IDisabilityInfoService disabilityInfoService;
+
+    @Autowired
+    private UserMapper userMapper;
+
+    @Operation(summary = "按关键词搜索用户（用于下拉选择器远程搜索）",
+            description = "按真实姓名模糊匹配，可选按角色过滤（如 role=1 学员, role=2 教练），最多返回 20 条")
+    @GetMapping("/search")
+    public JsonResult<List<User>> search(@RequestParam String keyword,
+                                         @RequestParam(required = false) Integer role) {
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<User>()
+                .like(User::getRealName, keyword)
+                .select(User::getUserId, User::getRealName, User::getUsername)
+                .last("LIMIT 20");
+        if (role != null) {
+            wrapper.eq(User::getRole, role);
+        }
+        return JsonResult.ok(userMapper.selectList(wrapper));
+    }
 
     @Operation(summary = "获取当前登录用户信息",
             description = "从 Token 解析当前用户，适用于所有角色")
