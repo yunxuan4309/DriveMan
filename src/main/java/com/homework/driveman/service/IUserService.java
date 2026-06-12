@@ -7,7 +7,7 @@ import com.homework.driveman.entity.User;
 /** 用户业务接口 */
 public interface IUserService extends IService<User> {
 
-    /** 注册新用户（密码自动 BCrypt 加密） */
+    /** 学员自助注册（role=0 准学员，status=1 已激活，支付报名套餐后升级为 role=1） */
     void register(User user);
 
     /** 修改密码 */

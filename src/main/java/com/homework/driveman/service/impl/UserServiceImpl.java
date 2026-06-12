@@ -36,9 +36,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
         // 密码加密
         user.setPassword(encoder.encode(user.getPassword()));
-        // 新学员默认待审核
-        user.setStatus(0);
-        user.setRole(1);
+        // 注册为"准学员"(role=0)，后续通过支付报名套餐升级为正式学员(role=1)
+        user.setStatus(1);
+        user.setRole(0);
         save(user);
     }
 

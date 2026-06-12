@@ -1,7 +1,9 @@
 package com.homework.driveman.controller;
 
+import com.homework.driveman.entity.LicenseConfig;
 import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
+import com.homework.driveman.mapper.LicenseConfigMapper;
 import com.homework.driveman.mapper.UserMapper;
 import com.homework.driveman.service.IUserService;
 import com.homework.driveman.utils.CurrentUser;
@@ -32,6 +34,9 @@ public class LoginController {
 
     @Autowired
     private JwtUtils jwtUtils;
+
+    @Autowired
+    private LicenseConfigMapper licenseConfigMapper;
 
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
@@ -68,11 +73,25 @@ public class LoginController {
         result.put("username", user.getUsername());
         result.put("realName", user.getRealName());
         result.put("role", user.getRole());
+        result.put("licenseType", user.getLicenseType());
+
+        // 查询考试模式（1=普通小汽车, 2=特种车辆），前端用于判断功能兼容性
+        Integer examMode = null;
+        if (user.getLicenseType() != null) {
+            LicenseConfig config = licenseConfigMapper.selectOne(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<LicenseConfig>()
+                            .eq(LicenseConfig::getLicenseType, user.getLicenseType())
+                            .last("LIMIT 1"));
+            if (config != null) {
+                examMode = config.getExamMode();
+            }
+        }
+        result.put("examMode", examMode);
 
         return JsonResult.ok(result);
     }
 
-    @Operation(summary = "学员注册", description = "公开接口，学员自助注册，注册后状态为待审核")
+    @Operation(summary = "学员自助注册", description = "公开接口，学员填写基本资料注册为准学员（role=0），支付报名套餐后升级为正式学员（role=1）")
     @PostMapping("/register")
     public JsonResult<Map<String, Object>> register(@RequestBody User user) {
         userService.register(user);

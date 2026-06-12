@@ -23,7 +23,7 @@ public class FeeStandardController {
     @Autowired
     private IFeeStandardService feeStandardService;
 
-    @RequireRole(3)
+    @RequireRole({0, 1, 3})
     @Operation(summary = "分页查询费用标准", description = "支持按车型筛选，分页返回费用标准列表")
     @GetMapping
     public JsonResult<Page<FeeStandard>> list(
@@ -41,7 +41,7 @@ public class FeeStandardController {
         return JsonResult.ok(feeStandard);
     }
 
-    @RequireRole(3)
+    @RequireRole({0, 1, 3})
     @Operation(summary = "按车型查询费用标准", description = "查询指定车型（如 C1/C2）的所有费用记录（含全包套餐和各科目费用）")
     @GetMapping("/type/{licenseType}")
     public JsonResult<java.util.List<FeeStandard>> getByLicenseType(@PathVariable String licenseType) {
