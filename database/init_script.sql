@@ -396,6 +396,9 @@ CREATE TABLE IF NOT EXISTS `venue` (
     `address` VARCHAR(200) DEFAULT NULL COMMENT '详细地址',
     `contact_phone` VARCHAR(20) DEFAULT NULL COMMENT '联系电话',
     `capacity` INT UNSIGNED DEFAULT NULL COMMENT '容纳人数',
+    `max_vehicles` TINYINT UNSIGNED DEFAULT NULL COMMENT '最大同时容纳车辆数（仅训练场地使用）',
+    `supported_types` VARCHAR(50) DEFAULT NULL COMMENT '支持训练的车型，逗号分隔，NULL表示不限',
+    `subjects` VARCHAR(20) DEFAULT NULL COMMENT '支持训练的科目，逗号分隔如"2,3"，NULL表示不限',
     `facilities` VARCHAR(500) DEFAULT NULL COMMENT '设施设备说明',
     `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态: 1-启用, 0-停用',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -533,6 +536,7 @@ CREATE TABLE IF NOT EXISTS `coach_schedule` (
     `vehicle_id`      INT UNSIGNED NOT NULL COMMENT '车辆ID',
     `venue_id`        INT UNSIGNED NOT NULL COMMENT '训练场地ID',
     `license_type`    VARCHAR(10)   NOT NULL COMMENT '培训车型（需与车辆车型匹配）',
+    `subject`         TINYINT       DEFAULT NULL COMMENT '培训科目: 2-科目二, 3-科目三',
     `start_time`      DATETIME      NOT NULL COMMENT '开始时间',
     `end_time`        DATETIME      NOT NULL COMMENT '结束时间',
     `max_students`    TINYINT       NOT NULL DEFAULT 1 COMMENT '该时段最大可容纳学员数',
@@ -569,6 +573,14 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
                    WHERE TABLE_SCHEMA = 'driveman' AND TABLE_NAME = 'venue' AND COLUMN_NAME = 'supported_types') THEN
         ALTER TABLE `venue` ADD COLUMN `supported_types` VARCHAR(50) DEFAULT NULL COMMENT '支持训练的车型，逗号分隔，NULL表示不限';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                   WHERE TABLE_SCHEMA = 'driveman' AND TABLE_NAME = 'venue' AND COLUMN_NAME = 'subjects') THEN
+        ALTER TABLE `venue` ADD COLUMN `subjects` VARCHAR(20) DEFAULT NULL COMMENT '支持训练的科目，逗号分隔如"2,3"，NULL表示不限';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                   WHERE TABLE_SCHEMA = 'driveman' AND TABLE_NAME = 'coach_schedule' AND COLUMN_NAME = 'subject') THEN
+        ALTER TABLE `coach_schedule` ADD COLUMN `subject` TINYINT DEFAULT NULL COMMENT '培训科目: 2-科目二, 3-科目三, 4-科目四';
     END IF;
     IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
                    WHERE TABLE_SCHEMA = 'driveman' AND TABLE_NAME = 'appointment' AND COLUMN_NAME = 'schedule_id') THEN

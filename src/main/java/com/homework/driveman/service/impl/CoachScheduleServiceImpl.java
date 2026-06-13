@@ -90,6 +90,11 @@ public class CoachScheduleServiceImpl extends ServiceImpl<CoachScheduleMapper, C
             throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
                     "该场地不支持" + schedule.getLicenseType() + "车型训练");
         }
+        if (schedule.getSubject() != null && venue.getSubjects() != null && !venue.getSubjects().isEmpty()
+                && !containsType(venue.getSubjects(), String.valueOf(schedule.getSubject()))) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                    "该场地不支持科目" + schedule.getSubject() + "训练（场地支持科目：" + venue.getSubjects() + "）");
+        }
         if (venue.getStatus() != null && venue.getStatus() != 1) {
             throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "该场地已停用");
         }

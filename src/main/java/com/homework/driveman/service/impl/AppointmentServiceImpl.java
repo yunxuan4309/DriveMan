@@ -3,15 +3,21 @@ package com.homework.driveman.service.impl;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.homework.driveman.constant.AppointmentStatus;
 import com.homework.driveman.entity.Appointment;
+import com.homework.driveman.entity.CoachSchedule;
 import com.homework.driveman.exception.ServiceException;
 import com.homework.driveman.mapper.AppointmentMapper;
+import com.homework.driveman.mapper.CoachScheduleMapper;
 import com.homework.driveman.service.IAppointmentService;
 import com.homework.driveman.web.ServiceCode;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AppointmentServiceImpl extends ServiceImpl<AppointmentMapper, Appointment> implements IAppointmentService {
+
+    @Autowired
+    private CoachScheduleMapper coachScheduleMapper;
 
     @Override
     @Transactional
@@ -65,5 +71,14 @@ public class AppointmentServiceImpl extends ServiceImpl<AppointmentMapper, Appoi
         }
         appointment.setStatus(AppointmentStatus.COMPLETED);
         updateById(appointment);
+
+        // 释放排班名额
+        if (appointment.getScheduleId() != null) {
+            CoachSchedule schedule = coachScheduleMapper.selectById(appointment.getScheduleId());
+            if (schedule != null && schedule.getBookedCount() != null && schedule.getBookedCount() > 0) {
+                schedule.setBookedCount(schedule.getBookedCount() - 1);
+                coachScheduleMapper.updateById(schedule);
+            }
+        }
     }
 }

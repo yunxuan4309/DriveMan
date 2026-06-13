@@ -35,4 +35,9 @@ public interface TrainingRecordMapper extends BaseMapper<TrainingRecord> {
             "WHERE coach_id = #{coachId} AND subject_type = #{subject} AND is_deleted = 0")
     BigDecimal sumHoursByCoachAndSubject(@Param("coachId") Integer coachId,
                                          @Param("subject") Integer subject);
+
+    /** 统计某个约课已录入的累计学时 */
+    @Select("SELECT COALESCE(SUM(duration), 0) FROM training_record " +
+            "WHERE appointment_id = #{appointmentId} AND is_deleted = 0")
+    BigDecimal sumDurationByAppointmentId(@Param("appointmentId") Integer appointmentId);
 }

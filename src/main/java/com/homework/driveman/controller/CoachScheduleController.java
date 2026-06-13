@@ -2,7 +2,13 @@ package com.homework.driveman.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.config.RequireRole;
+import com.homework.driveman.entity.Coach;
 import com.homework.driveman.entity.CoachSchedule;
+import com.homework.driveman.entity.User;
+import com.homework.driveman.entity.Venue;
+import com.homework.driveman.mapper.CoachMapper;
+import com.homework.driveman.mapper.UserMapper;
+import com.homework.driveman.mapper.VenueMapper;
 import com.homework.driveman.service.ICoachScheduleService;
 import com.homework.driveman.utils.CurrentUser;
 import com.homework.driveman.web.JsonResult;
@@ -14,6 +20,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -29,6 +37,15 @@ public class CoachScheduleController {
     @Autowired
     private ICoachScheduleService scheduleService;
 
+    @Autowired
+    private VenueMapper venueMapper;
+
+    @Autowired
+    private CoachMapper coachMapper;
+
+    @Autowired
+    private UserMapper userMapper;
+
     private CurrentUser getCurrentUser(HttpServletRequest request) {
         return (CurrentUser) request.getAttribute("currentUser");
     }
@@ -39,11 +56,36 @@ public class CoachScheduleController {
     @Operation(summary = "查询可约时段（学员端）",
             description = "自动查询学员绑定教练的已通过排班，仅返回名额未满且时间在未来的排班。可选按车型筛选")
     @GetMapping("/available")
-    public JsonResult<List<CoachSchedule>> listAvailable(HttpServletRequest request,
-                                                          @RequestParam(required = false) String licenseType) {
+    public JsonResult<List<Map<String, Object>>> listAvailable(HttpServletRequest request,
+                                                                @RequestParam(required = false) String licenseType) {
         CurrentUser user = getCurrentUser(request);
         List<CoachSchedule> list = scheduleService.listAvailableForStudent(user.getUserId(), licenseType);
-        return JsonResult.ok(list);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (CoachSchedule s : list) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", s.getId());
+            m.put("coachId", s.getCoachId());
+            m.put("vehicleId", s.getVehicleId());
+            m.put("venueId", s.getVenueId());
+            m.put("licenseType", s.getLicenseType());
+            m.put("subject", s.getSubject());
+            m.put("startTime", s.getStartTime());
+            m.put("endTime", s.getEndTime());
+            m.put("maxStudents", s.getMaxStudents());
+            m.put("bookedCount", s.getBookedCount());
+            m.put("status", s.getStatus());
+            // 查询场地名称
+            Venue venue = venueMapper.selectById(s.getVenueId());
+            m.put("venueName", venue != null ? venue.getName() : null);
+            // 查询教练姓名
+            Coach coach = coachMapper.selectById(s.getCoachId());
+            if (coach != null) {
+                User coachUser = userMapper.selectById(coach.getUserId());
+                m.put("coachName", coachUser != null ? coachUser.getRealName() : null);
+            }
+            result.add(m);
+        }
+        return JsonResult.ok(result);
     }
 
     // ==================== 管理员端 ====================

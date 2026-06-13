@@ -39,6 +39,7 @@ import com.homework.driveman.dto.TimeSlotDTO;
 import com.homework.driveman.dto.CoachProfileUpdateDTO;
 import com.homework.driveman.dto.ChangePasswordDTO;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -156,7 +157,7 @@ public class CoachPortalController {
     // ==================== 3. 录入学时 ====================
 
     @RequireRole(2)
-    @Operation(summary = "录入学时", description = "教练为名下学员录入学时记录（需指定学员ID、科目类型、学时数等）")
+    @Operation(summary = "录入学时", description = "教练为名下学员录入学时记录（需指定学员ID、科目类型、学时数等），学时不能超过关联约课的总时长")
     @PostMapping("/training-records")
     public JsonResult<Void> createTrainingRecord(HttpServletRequest request,
                                                  @RequestBody TrainingRecord record) {
@@ -171,6 +172,35 @@ public class CoachPortalController {
                         .eq(StudentCoach::getStatus, 1));
         if (bindingCount == 0) {
             throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "该学员不是您名下的学员");
+        }
+
+        // 学时不能超过关联约课的总时长，且约课必须已完成
+        if (record.getAppointmentId() != null) {
+            Appointment appointment = appointmentService.getById(record.getAppointmentId());
+            if (appointment == null) {
+                throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "关联的约课记录不存在");
+            }
+            if (appointment.getStatus() == null || appointment.getStatus() != 1) {
+                throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "仅已确认的课程可以录入学时");
+            }
+            if (appointment.getStartTime() != null && appointment.getEndTime() != null) {
+                long totalMinutes = java.time.Duration.between(appointment.getStartTime(), appointment.getEndTime()).toMinutes();
+                BigDecimal totalHours = BigDecimal.valueOf(totalMinutes).divide(BigDecimal.valueOf(60), 1, java.math.RoundingMode.HALF_UP);
+
+                // 查询该约课已录入的累计学时
+                BigDecimal alreadyRecorded = trainingRecordMapper.sumDurationByAppointmentId(record.getAppointmentId());
+                if (alreadyRecorded == null) alreadyRecorded = BigDecimal.ZERO;
+
+                // 累计已录 + 本次录入 不能超过课程总时长
+                BigDecimal afterRecord = alreadyRecorded.add(record.getDuration());
+                if (afterRecord.compareTo(totalHours) > 0) {
+                    BigDecimal remaining = totalHours.subtract(alreadyRecorded);
+                    throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                            "学时超限：已录" + alreadyRecorded + "h + 本次" + record.getDuration()
+                                    + "h = " + afterRecord + "h，超过课程总时长" + totalHours
+                                    + "h（剩余可录" + (remaining.compareTo(BigDecimal.ZERO) > 0 ? remaining : BigDecimal.ZERO) + "h）");
+                }
+            }
         }
 
         trainingRecordMapper.insert(record);
@@ -224,7 +254,7 @@ public class CoachPortalController {
                 .eq(status != null, Appointment::getStatus, status)
                 .orderByDesc(Appointment::getCreateTime);
         Page<Appointment> rawPage = appointmentService.page(new Page<>(page, size), wrapper);
-        // 补充学员姓名
+        // 补充学员姓名 + 排班信息
         List<Map<String, Object>> enriched = rawPage.getRecords().stream().map(a -> {
             Map<String, Object> map = new LinkedHashMap<>();
             map.put("id", a.getId());
@@ -238,6 +268,17 @@ public class CoachPortalController {
             map.put("createTime", a.getCreateTime());
             User student = userService.getById(a.getStudentId());
             map.put("studentName", student != null ? student.getRealName() : null);
+            // 补充分排班中的科目和车型
+            if (a.getScheduleId() != null) {
+                CoachSchedule schedule = coachScheduleService.getById(a.getScheduleId());
+                if (schedule != null) {
+                    map.put("subject", schedule.getSubject());
+                    map.put("licenseType", schedule.getLicenseType());
+                }
+            }
+            // 补充该约课已录累计学时
+            BigDecimal alreadyRecorded = trainingRecordMapper.sumDurationByAppointmentId(a.getId());
+            map.put("alreadyRecordedHours", alreadyRecorded != null ? alreadyRecorded : BigDecimal.ZERO);
             return map;
         }).collect(Collectors.toList());
         Page<Map<String, Object>> result = new Page<>(rawPage.getCurrent(), rawPage.getSize(), rawPage.getTotal());

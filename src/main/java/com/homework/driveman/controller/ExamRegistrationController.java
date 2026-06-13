@@ -209,6 +209,7 @@ public class ExamRegistrationController {
             FeeStandard examFee = feeStandardService.lambdaQuery()
                     .eq(FeeStandard::getLicenseType, session.getLicenseType())
                     .eq(FeeStandard::getSubject, session.getSubject())
+                    .notLike(FeeStandard::getDescription, "%合场%")
                     .one();
             if (examFee != null) {
                 paymentRecordService.autoCreate(registration.getStudentId(), "exam_fee", id,

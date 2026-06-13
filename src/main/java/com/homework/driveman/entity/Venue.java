@@ -41,6 +41,9 @@ public class Venue {
     /** 支持训练的车型，逗号分隔，NULL表示不限 */
     private String supportedTypes;
 
+    /** 支持训练的科目，逗号分隔如"2,3"，NULL表示不限 */
+    private String subjects;
+
     /** 状态: 1-启用, 0-停用 */
     private Integer status;
 

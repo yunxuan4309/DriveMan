@@ -28,6 +28,9 @@ public class CoachSchedule {
     /** 培训车型 */
     private String licenseType;
 
+    /** 培训科目: 2-科目二, 3-科目三 */
+    private Integer subject;
+
     /** 开始时间 */
     private LocalDateTime startTime;
 
