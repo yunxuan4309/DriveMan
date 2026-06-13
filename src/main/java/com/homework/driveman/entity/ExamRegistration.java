@@ -34,6 +34,9 @@ public class ExamRegistration {
     /** 是否合格: 0-不合格, 1-合格 */
     private Integer passStatus;
 
+    /** 关联文件ID（学员上传的成绩截图） */
+    private Integer fileId;
+
     /** 补考次数 */
     private Integer retakeCount;
 

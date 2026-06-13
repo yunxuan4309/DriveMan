@@ -92,6 +92,7 @@ CREATE TABLE IF NOT EXISTS `special_exam_record` (
     `subject` TINYINT NOT NULL COMMENT '科目: 1-理论, 2-实操',
     `score` TINYINT UNSIGNED DEFAULT NULL COMMENT '成绩 (0-100)',
     `pass_status` TINYINT DEFAULT NULL COMMENT '是否合格: 0-不合格, 1-合格',
+    `file_id` INT UNSIGNED DEFAULT NULL COMMENT '关联文件ID（学员上传的成绩截图）',
     `retake_count` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '该科目补考次数',
     `exam_date` DATETIME DEFAULT NULL COMMENT '考试时间',
     `cert_no` VARCHAR(50) DEFAULT NULL COMMENT '证书编号(双科通过后按规则生成)',

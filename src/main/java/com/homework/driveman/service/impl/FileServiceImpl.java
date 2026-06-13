@@ -42,7 +42,7 @@ public class FileServiceImpl extends ServiceImpl<FileMapper, File> implements IF
     private static final Set<String> ALLOWED_TYPES = Set.of(
             "id_card_front", "id_card_back", "physical_exam",
             "registration_pdf", "admission_ticket",
-            "training_record", "coach_qualification"
+            "training_record", "coach_qualification", "exam_score"
     );
 
     /** 各类文件允许的后缀（小写，不含点） */
@@ -53,7 +53,8 @@ public class FileServiceImpl extends ServiceImpl<FileMapper, File> implements IF
             "registration_pdf",    Set.of("pdf"),
             "admission_ticket",    Set.of("pdf"),
             "training_record",     Set.of("pdf"),
-            "coach_qualification", Set.of("jpg", "jpeg", "png", "bmp", "webp", "pdf")
+            "coach_qualification", Set.of("jpg", "jpeg", "png", "bmp", "webp", "pdf"),
+            "exam_score",          Set.of("jpg", "jpeg", "png", "bmp", "webp", "pdf")
     );
 
     @Value("${drive.upload.path:./upload-files}")

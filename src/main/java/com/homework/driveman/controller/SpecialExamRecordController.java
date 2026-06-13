@@ -75,11 +75,12 @@ public class SpecialExamRecordController {
     }
 
     @RequireRole(3)
-    @Operation(summary = "录入成绩", description = "录入考试成绩（含是否合格、补考次数等）")
+    @Operation(summary = "录入成绩", description = "录入考试成绩（含是否合格、补考次数等），fileId 为学员上传的成绩截图")
     @PutMapping("/{id}/score")
     public JsonResult<Void> enterScore(@PathVariable Integer id,
                                        @RequestParam @Parameter(description = "成绩 (0-100)") Integer score,
                                        @RequestParam @Parameter(description = "是否合格：0-不合格, 1-合格") Integer passStatus,
+                                       @RequestParam(required = false) @Parameter(description = "关联文件ID") Integer fileId,
                                        @RequestParam(required = false) @Parameter(description = "补考次数") Integer retakeCount,
                                        @RequestParam(required = false) @Parameter(description = "证书编号") String certNo) {
         SpecialExamRecord record = specialExamRecordService.getById(id);
@@ -88,6 +89,7 @@ public class SpecialExamRecordController {
         }
         record.setScore(score);
         record.setPassStatus(passStatus);
+        if (fileId != null) record.setFileId(fileId);
         if (retakeCount != null) record.setRetakeCount(retakeCount);
         if (certNo != null) record.setCertNo(certNo);
         specialExamRecordService.updateById(record);

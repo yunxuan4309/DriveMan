@@ -225,10 +225,11 @@ public class ExamRegistrationController {
 
     @RequireRole(3)
     @Operation(summary = "录入考试成绩",
-            description = "score 0-100，合格分数线从系统配置读取（默认 90 分）")
+            description = "score 0-100，合格分数线从系统配置读取（默认 90 分），fileId 为学员上传的成绩截图")
     @PutMapping("/{id}/score")
     public JsonResult<Void> enterScore(@PathVariable Integer id,
-                                       @RequestParam Integer score) {
+                                       @RequestParam Integer score,
+                                       @RequestParam Integer fileId) {
         if (score < 0 || score > 100) {
             throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "成绩须在0-100之间");
         }
@@ -241,6 +242,7 @@ public class ExamRegistrationController {
         int passScore = getPassScore();
         registration.setScore(score);
         registration.setPassStatus(score >= passScore ? 1 : 0);
+        registration.setFileId(fileId);
         registration.setStatus(3); // 已考试
         if (score < passScore) {
             registration.setRetakeCount(registration.getRetakeCount() + 1);
