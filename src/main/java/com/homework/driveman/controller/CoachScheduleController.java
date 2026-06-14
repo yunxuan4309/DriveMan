@@ -110,11 +110,12 @@ public class CoachScheduleController {
     }
 
     @RequireRole(3)
-    @Operation(summary = "查看待审核排班列表")
+    @Operation(summary = "查看待审核排班列表（含取消申请）",
+            description = "返回所有需要管理员处理的排班：待审核(status=0) + 申请取消中(status=5)")
     @GetMapping("/pending")
     public JsonResult<List<CoachSchedule>> listPending() {
         List<CoachSchedule> list = scheduleService.lambdaQuery()
-                .eq(CoachSchedule::getStatus, 0)
+                .in(CoachSchedule::getStatus, 0, 5)
                 .orderByAsc(CoachSchedule::getStartTime)
                 .list();
         return JsonResult.ok(list);
@@ -134,6 +135,17 @@ public class CoachScheduleController {
                                    @RequestParam Integer status,
                                    @RequestParam(required = false) String remark) {
         scheduleService.audit(id, status, remark);
+        return JsonResult.ok();
+    }
+
+    @RequireRole(3)
+    @Operation(summary = "审核取消申请",
+            description = "处理 coach 提交的取消申请(status=5)。approved=true 通过 → 级联取消关联约课并释放名额；approved=false 拒绝 → 排班恢复为已通过(status=1)")
+    @PutMapping("/{id}/cancel-audit")
+    public JsonResult<Void> cancelAudit(@PathVariable Integer id,
+                                         @RequestParam boolean approved,
+                                         @RequestParam(required = false) String remark) {
+        scheduleService.cancelAudit(id, approved, remark);
         return JsonResult.ok();
     }
 }

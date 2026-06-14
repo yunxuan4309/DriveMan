@@ -639,7 +639,9 @@ INSERT IGNORE INTO `config` (`config_key`, `config_value`, `description`) VALUES
 ('max_no_show_count', '3', '爽约次数上限'),
 ('no_show_punish_days', '7', '爽约后禁止约课天数'),
 ('exam_pass_score', '90', '考试合格分数线（百分制）'),
-('retake_training_fee', '300.00', '二次培训费默认金额(元)，非全包学员挂科后每次培训的费用');
+('retake_training_fee', '300.00', '二次培训费默认金额(元)，非全包学员挂科后每次培训的费用'),
+('exam_registration_deadline_days', '2', '考试报名截止天数（考试前N天停止报名）'),
+('exam_retake_cooldown_days', '7', '挂科后冷静期天数（不合格后N天内不可重新报名同科目）');
 
 -- 8. 系统公告
 INSERT IGNORE INTO `notice` (`title`, `content`, `publish_time`) VALUES

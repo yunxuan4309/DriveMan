@@ -30,6 +30,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -113,6 +114,19 @@ public class ExamRegistrationController {
             throw new ServiceException(ServiceCode.ERROR_CONFLICT, "该场次名额已满");
         }
 
+        // 校验考试日期：不能报名已过期的考试
+        if (session.getExamDate() != null && session.getExamDate().isBefore(LocalDate.now())) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "该场次考试日期已过，无法报名");
+        }
+
+        // 校验报名截止时间：考试前 N 天停止报名（N 从 config 表读取，默认 2 天）
+        int deadlineDays = Integer.parseInt(configService.getConfigValue("exam_registration_deadline_days", "2"));
+        LocalDate deadline = session.getExamDate().minusDays(deadlineDays);
+        if (LocalDate.now().isAfter(deadline)) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                    "该场次报名已截止（考试前" + deadlineDays + "天停止报名，截止日期：" + deadline + "）");
+        }
+
         // ① 校验学员车型与场次车型是否匹配
         User student = userService.getById(studentId);
         if (student == null) {
@@ -145,7 +159,36 @@ public class ExamRegistrationController {
                     "您已通过科目" + session.getSubject() + "，无需重复报名");
         }
 
-        // ④ 检测是否为补考：该学员同一科目是否有不合格记录
+        // ④ 检测该科目是否有进行中的报名（待审核或审核通过未出成绩），防止重复报名
+        long activeCount = examRegistrationService.lambdaQuery()
+                .eq(ExamRegistration::getStudentId, studentId)
+                .eq(ExamRegistration::getSubject, session.getSubject())
+                .in(ExamRegistration::getStatus, 0, 1)
+                .count();
+        if (activeCount > 0) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                    "您已有科目" + session.getSubject() + "的考试报名正在处理中（待审核或审核通过未出成绩），请等待完成后再次报名");
+        }
+
+        // ⑤ 检测挂科冷静期：该科目最近一次不合格后需等待 N 天（N 从 config 表读取，默认 7 天）
+        ExamRegistration lastFail = examRegistrationService.lambdaQuery()
+                .eq(ExamRegistration::getStudentId, studentId)
+                .eq(ExamRegistration::getSubject, session.getSubject())
+                .eq(ExamRegistration::getPassStatus, 0)
+                .orderByDesc(ExamRegistration::getUpdateTime)
+                .last("LIMIT 1")
+                .one();
+        if (lastFail != null) {
+            int cooldownDays = Integer.parseInt(configService.getConfigValue("exam_retake_cooldown_days", "7"));
+            LocalDate cooldownEnd = lastFail.getUpdateTime().toLocalDate().plusDays(cooldownDays);
+            if (LocalDate.now().isBefore(cooldownEnd)) {
+                throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                        "科目" + session.getSubject() + "上次考试未通过，需等待" + cooldownDays
+                                + "天冷静期（截止：" + cooldownEnd + "），期间可先完成二次培训");
+            }
+        }
+
+        // ⑥ 检测是否为补考：该学员同一科目是否有不合格记录
         boolean isRetake = examRegistrationService.lambdaQuery()
                 .eq(ExamRegistration::getStudentId, studentId)
                 .eq(ExamRegistration::getSubject, session.getSubject())

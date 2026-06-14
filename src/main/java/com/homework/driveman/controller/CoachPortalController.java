@@ -578,11 +578,13 @@ public class CoachPortalController {
     }
 
     @RequireRole(2)
-    @Operation(summary = "取消排班", description = "教练取消自己的排班申请（待审核或已通过状态可取消）")
+    @Operation(summary = "取消排班", description = "教练取消自己的排班申请。待审核或已通过但无人预约时直接取消(status=4)；已通过且有人预约时转为申请取消中(status=5)，等待管理员审核。")
     @PutMapping("/schedules/{id}/cancel")
-    public JsonResult<Void> cancelSchedule(@PathVariable Integer id, HttpServletRequest request) {
+    public JsonResult<Void> cancelSchedule(@PathVariable Integer id,
+                                           @RequestParam(required = false) String reason,
+                                           HttpServletRequest request) {
         Integer coachId = resolveCoachId(request);
-        coachScheduleService.cancel(id, coachId);
+        coachScheduleService.cancel(id, coachId, reason);
         return JsonResult.ok();
     }
 

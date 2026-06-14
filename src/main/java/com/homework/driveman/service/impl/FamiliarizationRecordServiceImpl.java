@@ -64,6 +64,11 @@ public class FamiliarizationRecordServiceImpl implements IFamiliarizationRecordS
             throw new ServiceException(ServiceCode.ERROR_CONFLICT, "该场次名额已满");
         }
 
+        // 校验考试日期：不能对已过期的场次申请合场
+        if (session.getExamDate() != null && session.getExamDate().isBefore(java.time.LocalDate.now())) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "该场次考试日期已过，无法申请合场");
+        }
+
         // 3. 校验车型匹配
         if (session.getLicenseType() != null && !session.getLicenseType().equals(student.getLicenseType())) {
             throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
@@ -162,7 +167,19 @@ public class FamiliarizationRecordServiceImpl implements IFamiliarizationRecordS
         if (record.getStatus() != 1) {
             throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "仅已支付的合场可以安排时间");
         }
-        record.setScheduledTime(LocalDateTime.parse(scheduledTime, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+
+        LocalDateTime scheduled = LocalDateTime.parse(scheduledTime, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+
+        // 校验合场时间必须在考试日期之前（合场是考前练习，不能比考试晚）
+        ExamSession session = examSessionService.getById(record.getExamSessionId());
+        if (session != null && session.getExamDate() != null) {
+            if (scheduled.toLocalDate().isAfter(session.getExamDate())) {
+                throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                        "合场时间（" + scheduled.toLocalDate() + "）不能晚于考试日期（" + session.getExamDate() + "），合场为考前练习");
+            }
+        }
+
+        record.setScheduledTime(scheduled);
         familiarizationRecordMapper.updateById(record);
         return record;
     }

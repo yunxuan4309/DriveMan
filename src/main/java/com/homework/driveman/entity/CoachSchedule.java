@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 
 /**
  * 教练排班/车辆使用申请表
- * status: 0-待审核, 1-已通过, 2-已拒绝, 3-已完成, 4-已取消
+ * status: 0-待审核, 1-已通过, 2-已拒绝, 3-已完成, 4-已取消, 5-申请取消中
  */
 @Data
 @TableName("coach_schedule")
@@ -43,7 +43,7 @@ public class CoachSchedule {
     /** 已预约学员数 */
     private Integer bookedCount;
 
-    /** 状态: 0-待审核, 1-已通过, 2-已拒绝, 3-已完成, 4-已取消 */
+    /** 状态: 0-待审核, 1-已通过, 2-已拒绝, 3-已完成, 4-已取消, 5-申请取消中 */
     private Integer status;
 
     /** 申请说明 */

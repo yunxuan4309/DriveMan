@@ -29,10 +29,34 @@ public interface ICoachScheduleService extends IService<CoachSchedule> {
 
     /**
      * 教练取消排班申请
+     * <p>
+     * 分两种情况：
+     * <ul>
+     *   <li>status=0（待审核）→ 直接取消（status=4），无需审核</li>
+     *   <li>status=1（已通过）且 bookedCount=0 → 直接取消（status=4），无需审核</li>
+     *   <li>status=1（已通过）且 bookedCount&gt;0 → 提交取消申请（status=5），等待管理员审核</li>
+     * </ul>
+     *
      * @param scheduleId 排班ID
      * @param coachId    教练ID（校验归属）
+     * @param reason     取消原因
      */
-    void cancel(Integer scheduleId, Integer coachId);
+    void cancel(Integer scheduleId, Integer coachId, String reason);
+
+    /**
+     * 管理员审核取消申请
+     * <p>
+     * 仅能处理 status=5（申请取消中）的排班：
+     * <ul>
+     *   <li>通过 → status=4（已取消），同时级联取消该排班下所有进行中的约课并释放名额</li>
+     *   <li>拒绝 → status=1（回退到已通过），排班恢复生效</li>
+     * </ul>
+     *
+     * @param scheduleId 排班ID
+     * @param approved   true-通过, false-拒绝
+     * @param remark     审核备注
+     */
+    void cancelAudit(Integer scheduleId, boolean approved, String remark);
 
     /**
      * 查询教练已通过的可约时段（学员端调用，自动查绑定教练）

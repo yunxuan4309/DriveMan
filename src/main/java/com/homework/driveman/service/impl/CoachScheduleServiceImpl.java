@@ -3,12 +3,15 @@ package com.homework.driveman.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.homework.driveman.constant.AppointmentStatus;
+import com.homework.driveman.entity.Appointment;
 import com.homework.driveman.entity.Coach;
 import com.homework.driveman.entity.CoachSchedule;
 import com.homework.driveman.entity.StudentCoach;
 import com.homework.driveman.entity.Vehicle;
 import com.homework.driveman.entity.Venue;
 import com.homework.driveman.exception.ServiceException;
+import com.homework.driveman.mapper.AppointmentMapper;
 import com.homework.driveman.mapper.CoachMapper;
 import com.homework.driveman.mapper.CoachScheduleMapper;
 import com.homework.driveman.mapper.StudentCoachMapper;
@@ -21,7 +24,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -39,6 +41,9 @@ public class CoachScheduleServiceImpl extends ServiceImpl<CoachScheduleMapper, C
 
     @Autowired
     private StudentCoachMapper studentCoachMapper;
+
+    @Autowired
+    private AppointmentMapper appointmentMapper;
 
     @Override
     @Transactional
@@ -150,7 +155,7 @@ public class CoachScheduleServiceImpl extends ServiceImpl<CoachScheduleMapper, C
 
     @Override
     @Transactional
-    public void cancel(Integer scheduleId, Integer coachId) {
+    public void cancel(Integer scheduleId, Integer coachId, String reason) {
         CoachSchedule schedule = getById(scheduleId);
         if (schedule == null) {
             throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "排班记录不存在");
@@ -159,10 +164,72 @@ public class CoachScheduleServiceImpl extends ServiceImpl<CoachScheduleMapper, C
             throw new ServiceException(ServiceCode.ERROR_FORBIDDEN, "无权取消其他教练的排班");
         }
         if (schedule.getStatus() != 0 && schedule.getStatus() != 1) {
-            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "当前状态不允许取消");
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "当前状态不允许取消，状态：" + getStatusDesc(schedule.getStatus()));
         }
-        schedule.setStatus(4); // 已取消
+
+        if (schedule.getStatus() == 0) {
+            // 待审核 → 直接取消，无需管理员审核
+            schedule.setStatus(4);
+        } else {
+            // status=1（已通过）
+            int booked = schedule.getBookedCount() != null ? schedule.getBookedCount() : 0;
+            if (booked == 0) {
+                // 无人预约 → 直接取消
+                schedule.setStatus(4);
+            } else {
+                // 有学员已预约 → 转为"申请取消中"，等待管理员审核
+                schedule.setStatus(5);
+            }
+        }
+
+        if (reason != null && !reason.isEmpty()) {
+            schedule.setAuditRemark(reason);
+        }
         updateById(schedule);
+    }
+
+    @Override
+    @Transactional
+    public void cancelAudit(Integer scheduleId, boolean approved, String remark) {
+        CoachSchedule schedule = getById(scheduleId);
+        if (schedule == null) {
+            throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "排班记录不存在");
+        }
+        if (schedule.getStatus() != 5) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "该排班不在取消申请状态，当前状态：" + getStatusDesc(schedule.getStatus()));
+        }
+
+        if (approved) {
+            // 通过取消 → 级联取消该排班下所有进行中的约课并释放名额
+            cascadeCancelAppointments(scheduleId);
+            schedule.setStatus(4);
+            schedule.setBookedCount(0);
+        } else {
+            // 拒绝取消 → 回退到已通过状态，排班恢复生效
+            schedule.setStatus(1);
+        }
+
+        schedule.setAuditRemark(remark);
+        updateById(schedule);
+    }
+
+    /**
+     * 级联取消排班下所有进行中的学员约课
+     * <p>
+     * 将 status IN (0待确认, 1已确认) 的约课统一设为 3已取消，
+     * 并在 cancel_reason 中注明原因是教练取消了排班。
+     */
+    private void cascadeCancelAppointments(Integer scheduleId) {
+        List<Appointment> appointments = appointmentMapper.selectList(
+                new LambdaQueryWrapper<Appointment>()
+                        .eq(Appointment::getScheduleId, scheduleId)
+                        .in(Appointment::getStatus, AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED));
+
+        for (Appointment a : appointments) {
+            a.setStatus(AppointmentStatus.CANCELLED);
+            a.setCancelReason("教练已取消该时段排班，管理员已审核通过");
+            appointmentMapper.updateById(a);
+        }
     }
 
     @Override
@@ -235,6 +302,7 @@ public class CoachScheduleServiceImpl extends ServiceImpl<CoachScheduleMapper, C
             case 2 -> "已拒绝";
             case 3 -> "已完成";
             case 4 -> "已取消";
+            case 5 -> "申请取消中";
             default -> "未知";
         };
     }
