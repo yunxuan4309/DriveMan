@@ -145,12 +145,54 @@ public class ExamRegistrationController {
                     "您已通过科目" + session.getSubject() + "，无需重复报名");
         }
 
+        // ④ 检测该学员是否已有同一科目的待审核报名（防止重复申请同一科目）
+        long pendingCount = examRegistrationService.lambdaQuery()
+                .eq(ExamRegistration::getStudentId, studentId)
+                .eq(ExamRegistration::getSubject, session.getSubject())
+                .eq(ExamRegistration::getStatus, 0) // 0-待审核
+                .count();
+        if (pendingCount > 0) {
+            throw new ServiceException(ServiceCode.ERROR_CONFLICT,
+                    "您已提交科目" + session.getSubject() + "的报名申请，正在等待审核，请勿重复提交");
+        }
+
         // ④ 检测是否为补考：该学员同一科目是否有不合格记录
         boolean isRetake = examRegistrationService.lambdaQuery()
                 .eq(ExamRegistration::getStudentId, studentId)
                 .eq(ExamRegistration::getSubject, session.getSubject())
                 .eq(ExamRegistration::getPassStatus, 0)
                 .count() > 0;
+
+        // ⑤ 检测考试时间冲突：该学员在同一时间段是否已有其他考试安排
+        if (session.getStartTime() != null) {
+            // 计算目标考试的开始和结束时间（假设每场考试2小时）
+            LocalDateTime targetStart = LocalDateTime.of(session.getExamDate(), session.getStartTime());
+            LocalDateTime targetEnd = targetStart.plusHours(2);
+            
+            // 查询该学员所有已审核通过的考试报名
+            List<ExamRegistration> existingRegistrations = examRegistrationService.lambdaQuery()
+                .eq(ExamRegistration::getStudentId, studentId)
+                .eq(ExamRegistration::getStatus, 1) // 审核通过
+                .list();
+            
+            for (ExamRegistration existing : existingRegistrations) {
+                ExamSession existingSession = examSessionService.getById(existing.getSessionId());
+                if (existingSession != null && existingSession.getStartTime() != null) {
+                    LocalDateTime existingStart = LocalDateTime.of(
+                        existingSession.getExamDate(), 
+                        existingSession.getStartTime());
+                    LocalDateTime existingEnd = existingStart.plusHours(2);
+                    
+                    // 判断时间是否重叠：新考试开始时间 < 已有考试结束时间 && 新考试结束时间 > 已有考试开始时间
+                    if (targetStart.isBefore(existingEnd) && targetEnd.isAfter(existingStart)) {
+                        throw new ServiceException(ServiceCode.ERROR_CONFLICT, 
+                            "考试时间冲突！您在 " + existingSession.getExamDate() + " " + 
+                            existingSession.getStartTime() + " 已有" + 
+                            existingSession.getLocation() + "的考试安排");
+                    }
+                }
+            }
+        }
 
         ExamRegistration registration = new ExamRegistration();
         registration.setStudentId(studentId);
@@ -194,27 +236,39 @@ public class ExamRegistrationController {
             registration.setStatus(1);
             registration.setAuditTime(LocalDateTime.now());
 
-            // 审核通过时生成带考试场次信息的准考证
-            User student = userService.getById(registration.getStudentId());
-            if (student != null) {
-                String ticketPath = pdfService.generateAdmissionTicket(student, session);
-                fileService.saveRecord(registration.getStudentId(), ticketPath,
-                        "准考证_" + student.getRealName() + "_科目" + session.getSubject() + ".pdf",
-                        "admission_ticket", "exam_ticket", registration.getId());
+            try {
+                // 审核通过时生成带考试场次信息的准考证
+                User student = userService.getById(registration.getStudentId());
+                if (student != null && student.getRealName() != null) {
+                    String ticketPath = pdfService.generateAdmissionTicket(student, session);
+                    fileService.saveRecord(registration.getStudentId(), ticketPath,
+                            "准考证_" + student.getRealName() + "_科目" + session.getSubject() + ".pdf",
+                            "admission_ticket", "exam_ticket", registration.getId());
+                }
+            } catch (Exception e) {
+                // 准考证生成失败不影响审核，记录日志后继续
+                System.err.println("准考证生成失败: " + e.getMessage());
+                e.printStackTrace();
             }
 
-            // 审核通过时，根据科目费用标准自动生成待支付账单
-            // 注意：补考和首次考试按同一科目考试费标准收费（amount）。
-            // 二次培训费（非全包学员挂科后的额外培训）走 retake_training_record 流程，与此无关。
-            FeeStandard examFee = feeStandardService.lambdaQuery()
-                    .eq(FeeStandard::getLicenseType, session.getLicenseType())
-                    .eq(FeeStandard::getSubject, session.getSubject())
-                    .notLike(FeeStandard::getDescription, "%合场%")
-                    .one();
-            if (examFee != null) {
-                paymentRecordService.autoCreate(registration.getStudentId(), "exam_fee", id,
-                        examFee.getAmount(),
-                        session.getLicenseType() + " 科目" + session.getSubject() + " " + examFee.getDescription());
+            try {
+                // 审核通过时，根据科目费用标准自动生成待支付账单
+                // 注意：补考和首次考试按同一科目考试费标准收费（amount）。
+                // 二次培训费（非全包学员挂科后的额外培训）走 retake_training_record 流程，与此无关。
+                FeeStandard examFee = feeStandardService.lambdaQuery()
+                        .eq(FeeStandard::getLicenseType, session.getLicenseType())
+                        .eq(FeeStandard::getSubject, session.getSubject())
+                        .notLike(FeeStandard::getDescription, "%合场%")
+                        .one();
+                if (examFee != null) {
+                    paymentRecordService.autoCreate(registration.getStudentId(), "exam_fee", id,
+                            examFee.getAmount(),
+                            session.getLicenseType() + " 科目" + session.getSubject() + " " + examFee.getDescription());
+                }
+            } catch (Exception e) {
+                // 账单生成失败不影响审核，记录日志后继续
+                System.err.println("账单生成失败: " + e.getMessage());
+                e.printStackTrace();
             }
         } else {
             registration.setStatus(2);
