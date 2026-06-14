@@ -48,7 +48,7 @@ public class PhysicalExamServiceImpl extends ServiceImpl<PhysicalExamMapper, Phy
     private UserMapper userMapper;
 
     @Override
-    public PhysicalExam apply(Integer studentId, Integer venueId, String examDate) {
+    public PhysicalExam apply(Integer studentId, Integer venueId, String examDate, String licenseType) {
         // 校验体检地点是否合法
         Venue venue = venueMapper.selectById(venueId);
         if (venue == null || venue.getVenueType() != 3) {
@@ -58,29 +58,40 @@ public class PhysicalExamServiceImpl extends ServiceImpl<PhysicalExamMapper, Phy
             throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "该体检地点已停用，请选择其他地点");
         }
 
-        // 检查是否已有待审核或已通过未完成的申请
+        // 确定关联车型：优先使用传入的 licenseType，否则查学员当前车型
+        String actualLicenseType = licenseType;
+        if (actualLicenseType == null || actualLicenseType.isEmpty()) {
+            User student = userMapper.selectById(studentId);
+            actualLicenseType = student != null ? student.getLicenseType() : null;
+        }
+
+        // 检查是否已有同车型进行中的体检申请（同一车型不要重复申请）
         Long count = lambdaQuery()
                 .eq(PhysicalExam::getStudentId, studentId)
                 .in(PhysicalExam::getStatus, 0, 1)
+                .eq(PhysicalExam::getLicenseType, actualLicenseType)
                 .count();
         if (count > 0) {
-            throw new ServiceException(ServiceCode.ERROR_CONFLICT, "您已有进行中的体检申请，请勿重复提交");
+            throw new ServiceException(ServiceCode.ERROR_CONFLICT, "您已有" + actualLicenseType + "车型的体检申请正在处理中，请勿重复提交");
         }
 
-        // 检查上次体检是否为已合格状态（合格后不可再申请）
+        // 检查该车型是否已有合格记录（合格后不可重复申请同车型体检）
         Long passedCount = lambdaQuery()
                 .eq(PhysicalExam::getStudentId, studentId)
+                .eq(PhysicalExam::getLicenseType, actualLicenseType)
                 .eq(PhysicalExam::getResult, 1)
                 .eq(PhysicalExam::getStatus, 3)
                 .count();
         if (passedCount > 0) {
-            throw new ServiceException(ServiceCode.ERROR_CONFLICT, "您已体检合格，无需再次提交");
+            throw new ServiceException(ServiceCode.ERROR_CONFLICT,
+                    "您的" + actualLicenseType + "车型已体检合格，无需再次提交");
         }
 
         PhysicalExam exam = new PhysicalExam();
         exam.setStudentId(studentId);
         exam.setVenueId(venueId);
-        exam.setLocation(venue.getName()); // 从 venue 表同步名称
+        exam.setLicenseType(actualLicenseType);
+        exam.setLocation(venue.getName());
         try {
             exam.setExamDate(LocalDate.parse(examDate));
         } catch (Exception e) {
@@ -89,7 +100,7 @@ public class PhysicalExamServiceImpl extends ServiceImpl<PhysicalExamMapper, Phy
         exam.setStatus(0); // 待审核
         save(exam);
 
-        log.info("体检申请提交成功: studentId={}, venueId={}", studentId, venueId);
+        log.info("体检申请提交成功: studentId={}, venueId={}, licenseType={}", studentId, venueId, actualLicenseType);
         return exam;
     }
 
@@ -157,6 +168,27 @@ public class PhysicalExamServiceImpl extends ServiceImpl<PhysicalExamMapper, Phy
         if (exam != null) {
             throw new ServiceException(ServiceCode.ERROR_FORBIDDEN,
                     "您的体检结果为不合格，无法进行此操作，请联系管理员");
+        }
+    }
+
+    @Override
+    public void checkPassedForLicense(Integer studentId, String licenseType) {
+        // 查找该学员对应车型的已完成的体检记录
+        PhysicalExam exam = lambdaQuery()
+                .eq(PhysicalExam::getStudentId, studentId)
+                .eq(PhysicalExam::getStatus, 3)
+                .eq(PhysicalExam::getLicenseType, licenseType)
+                .orderByDesc(PhysicalExam::getCreateTime)
+                .last("LIMIT 1")
+                .one();
+
+        if (exam == null) {
+            throw new ServiceException(ServiceCode.ERROR_FORBIDDEN,
+                    "您尚未完成" + licenseType + "车型的体检，请先提交体检申请并获取合格结果后再操作");
+        }
+        if (exam.getResult() != null && exam.getResult() == 0) {
+            throw new ServiceException(ServiceCode.ERROR_FORBIDDEN,
+                    "您的" + licenseType + "车型体检结果为不合格，无法进行此操作，请联系管理员");
         }
     }
 
@@ -257,6 +289,7 @@ public class PhysicalExamServiceImpl extends ServiceImpl<PhysicalExamMapper, Phy
             User u = userMap.get(r.getStudentId());
             m.put("studentName", u != null ? u.getRealName() : null);
             m.put("venueId", r.getVenueId());
+            m.put("licenseType", r.getLicenseType());
             m.put("location", r.getLocation());
             m.put("examDate", r.getExamDate());
             m.put("status", r.getStatus());

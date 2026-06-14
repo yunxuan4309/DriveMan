@@ -49,6 +49,9 @@ public class User {
     /** 审核不通过原因 */
     private String auditReason;
 
+    /** 驾照获取日期（当前车型全科通过时自动记录），用于增驾持有年限校验 */
+    private LocalDateTime licenseObtainedDate;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 

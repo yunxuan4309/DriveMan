@@ -39,13 +39,14 @@ public class PhysicalExamController {
     // ==================== 学员端接口 ====================
 
     @RequireRole(1)
-    @Operation(summary = "提交体检申请", description = "学员选择体检地点（venueId）和日期提交申请")
+    @Operation(summary = "提交体检申请", description = "学员选择体检地点（venueId）、日期和关联车型提交申请。增驾场景需指定目标车型")
     @PostMapping("/apply")
     public JsonResult<PhysicalExam> apply(HttpServletRequest request,
                                           @RequestParam Integer venueId,
-                                          @RequestParam String examDate) {
+                                          @RequestParam String examDate,
+                                          @RequestParam(required = false) String licenseType) {
         CurrentUser user = getCurrentUser(request);
-        PhysicalExam exam = physicalExamService.apply(user.getUserId(), venueId, examDate);
+        PhysicalExam exam = physicalExamService.apply(user.getUserId(), venueId, examDate, licenseType);
         return JsonResult.ok(exam);
     }
 

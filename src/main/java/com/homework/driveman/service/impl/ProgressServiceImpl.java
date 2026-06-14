@@ -2,9 +2,11 @@ package com.homework.driveman.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.homework.driveman.entity.ExamRegistration;
+import com.homework.driveman.entity.ExamSession;
 import com.homework.driveman.entity.LicenseConfig;
 import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
+import com.homework.driveman.mapper.ExamSessionMapper;
 import com.homework.driveman.mapper.LicenseConfigMapper;
 import com.homework.driveman.mapper.TrainingRecordMapper;
 import com.homework.driveman.mapper.ExamRegistrationMapper;
@@ -41,6 +43,9 @@ public class ProgressServiceImpl implements IProgressService {
     @Autowired
     private TrainingRecordMapper trainingRecordMapper;
 
+    @Autowired
+    private ExamSessionMapper examSessionMapper;
+
     @Override
     public Map<String, Object> getProgress(Integer studentId) {
         // 1. 查出学员信息和报考车型
@@ -68,13 +73,27 @@ public class ProgressServiceImpl implements IProgressService {
         Integer examMode = configs.get(0).getExamMode();
         String certName = configs.get(0).getCertName();
 
-        // 3. 查该学员所有科目的考试通过情况
-        List<ExamRegistration> examResults = examRegistrationMapper.selectList(
-                new LambdaQueryWrapper<ExamRegistration>()
-                        .eq(ExamRegistration::getStudentId, studentId)
-                        .isNotNull(ExamRegistration::getPassStatus)
-                        .select(ExamRegistration::getSubject, ExamRegistration::getPassStatus,
-                                ExamRegistration::getScore));
+        // 3. 查该学员当前车型的考试通过情况
+        // 先找出该车型对应的所有考试场次 session_id，再按 session_id 过滤 exam_registration
+        // 避免增驾后旧车型的通过记录污染新车型的进度展示
+        List<Integer> sessionIds = examSessionMapper.selectList(
+                new LambdaQueryWrapper<ExamSession>()
+                        .eq(ExamSession::getLicenseType, type)
+                        .select(ExamSession::getId))
+                .stream().map(ExamSession::getId).collect(Collectors.toList());
+
+        List<ExamRegistration> examResults;
+        if (sessionIds.isEmpty()) {
+            examResults = Collections.emptyList();
+        } else {
+            examResults = examRegistrationMapper.selectList(
+                    new LambdaQueryWrapper<ExamRegistration>()
+                            .eq(ExamRegistration::getStudentId, studentId)
+                            .in(ExamRegistration::getSessionId, sessionIds)
+                            .isNotNull(ExamRegistration::getPassStatus)
+                            .select(ExamRegistration::getSubject, ExamRegistration::getPassStatus,
+                                    ExamRegistration::getScore));
+        }
         Set<Integer> passedSubjects = examResults.stream()
                 .filter(r -> r.getPassStatus() != null && r.getPassStatus() == 1)
                 .map(ExamRegistration::getSubject)

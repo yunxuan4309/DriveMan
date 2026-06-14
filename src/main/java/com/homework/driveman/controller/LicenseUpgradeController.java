@@ -38,14 +38,18 @@ public class LicenseUpgradeController {
     // ==================== 学员端接口 ====================
 
     @RequireRole(1)
-    @Operation(summary = "提交增驾申请", description = "学员申请增驾（同级增驾/升级增驾）。升级增驾需先上传驾驶证材料，再提交申请")
+    @Operation(summary = "提交增驾申请", description = "学员申请增驾（同级增驾/升级增驾）。升级增驾需先上传驾驶证材料。请求体: { targetLicense, upgradeType, licenseFileId? }")
     @PostMapping("/apply")
     public JsonResult<LicenseUpgrade> apply(HttpServletRequest request,
-                                            @RequestParam String targetLicense,
-                                            @RequestParam Integer upgradeType,
-                                            @RequestParam(required = false) Integer licenseFileId) {
+                                            @RequestBody Map<String, Object> body) {
         CurrentUser user = getCurrentUser(request);
-        LicenseUpgrade upgrade = licenseUpgradeService.apply(user.getUserId(), targetLicense, upgradeType, licenseFileId);
+        String targetLicense = (String) body.get("targetLicense");
+        Integer upgradeType = body.get("upgradeType") != null
+                ? ((Number) body.get("upgradeType")).intValue() : null;
+        Integer licenseFileId = body.get("licenseFileId") != null
+                ? ((Number) body.get("licenseFileId")).intValue() : null;
+        LicenseUpgrade upgrade = licenseUpgradeService.apply(
+                user.getUserId(), targetLicense, upgradeType, licenseFileId);
         return JsonResult.ok(upgrade);
     }
 

@@ -22,6 +22,9 @@ public class PhysicalExam {
     /** 关联场地ID（venue 表） */
     private Integer venueId;
 
+    /** 关联车型（体检标准因车型而异，如 C1 和 B1 体检要求不同） */
+    private String licenseType;
+
     /** 体检地点（冗余显示字段，从 venue 表同步） */
     private String location;
 

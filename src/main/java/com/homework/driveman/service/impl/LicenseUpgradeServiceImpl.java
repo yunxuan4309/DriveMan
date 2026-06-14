@@ -7,6 +7,7 @@ import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
 import com.homework.driveman.mapper.LicenseUpgradeMapper;
 import com.homework.driveman.service.ILicenseUpgradeService;
+import com.homework.driveman.service.IPhysicalExamService;
 import com.homework.driveman.service.IUserService;
 import com.homework.driveman.web.ServiceCode;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +33,9 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
 
     @Autowired
     private IUserService userService;
+
+    @Autowired
+    private IPhysicalExamService physicalExamService;
 
     // ==================== 车型等级定义 ====================
 
@@ -137,6 +141,12 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
             throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "无效的目标车型: " + targetLicense);
         }
 
+        // 目标车型与当前车型相同 → 无需增驾（两种类型通用）
+        if (originalLicense.equals(targetLicense)) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                    "您已持有 " + targetLicense + " 车型，无需增驾");
+        }
+
         // 校验增驾类型并执行对应校验
         if (upgradeType == 1) {
             // 同级增驾
@@ -187,13 +197,18 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
             throw new ServiceException(ServiceCode.ERROR_CONFLICT, "该申请已处理，无法重复审核");
         }
 
+        // 升级增驾（upgradeType=2）审核通过时，要求学员已完成目标车型的体检
+        if (status == 1 && upgrade.getUpgradeType() == 2) {
+            physicalExamService.checkPassedForLicense(upgrade.getStudentId(), upgrade.getTargetLicense());
+        }
+
         upgrade.setStatus(status);
         upgrade.setRemark(remark);
         updateById(upgrade);
 
-        // 审核通过后，状态变为"审核通过待考试"，不直接更新车型
         if (status == 1) {
-            log.info("增驾申请审核通过，待考试: id={}, studentId={}", id, upgrade.getStudentId());
+            log.info("增驾申请审核通过，待考试: id={}, studentId={}, targetLicense={}",
+                    id, upgrade.getStudentId(), upgrade.getTargetLicense());
         }
 
         log.info("增驾申请审核完成: id={}, status={}", id, status);
@@ -208,6 +223,7 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
         if (upgrade.getStatus() != 1) {
             throw new ServiceException(ServiceCode.ERROR_CONFLICT, "该申请未通过审核，无法录入考试成绩");
         }
+        // 已通过的不允许重复录入
         if (upgrade.getExamStatus() != null && upgrade.getExamStatus() == 1) {
             throw new ServiceException(ServiceCode.ERROR_CONFLICT, "该申请已考试通过，无需重复录入");
         }
@@ -216,16 +232,21 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
         upgrade.setExamRemark(examRemark);
         updateById(upgrade);
 
-        // 考试通过后才更新学员的准驾车型
         if (examStatus == 1) {
+            // 考试通过：更新学员的准驾车型 + 记录新驾照获取日期
             User student = userService.getById(upgrade.getStudentId());
             if (student != null) {
                 student.setLicenseType(upgrade.getTargetLicense());
+                // 增驾获得新车型，更新领证日期为当前时间（用于后续可能的再次增驾持有年限计算）
+                student.setLicenseObtainedDate(LocalDateTime.now());
                 userService.updateById(student);
-                log.info("学员车型已更新: userId={}, {} -> {}",
-                        student.getUserId(), upgrade.getOriginalLicense(), upgrade.getTargetLicense());
+                log.info("学员车型已更新: userId={}, {} -> {}, licenseObtainedDate={}",
+                        student.getUserId(), upgrade.getOriginalLicense(), upgrade.getTargetLicense(),
+                        student.getLicenseObtainedDate());
             }
         }
+        // 考试不通过（examStatus=2）：记录仍保留在 status=1/examStatus=2，
+        // 管理员可重新录入成绩（覆盖 examStatus），不阻止重试
 
         log.info("增驾考试成绩录入: id={}, examStatus={}", id, examStatus);
     }
@@ -279,13 +300,17 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
                     "申请 " + target + " 需年满 " + minAge + " 周岁，您目前 " + age + " 周岁");
         }
 
-        // 3. 校验是否为同一车型（无需增驾）
-        if (original.equals(target)) {
-            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
-                    "您已持有 " + target + " 车型，无需增驾");
+        // 3. 校验持有年限：用 license_obtained_date 自动计算
+        if (student.getLicenseObtainedDate() != null) {
+            int yearsHeld = Period.between(student.getLicenseObtainedDate().toLocalDate(), LocalDate.now()).getYears();
+            if (yearsHeld < matchedPath.years) {
+                throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                        "增驾 " + target + " 需持有 " + original + " 满 " + matchedPath.years
+                                + " 年，您于 " + student.getLicenseObtainedDate().toLocalDate()
+                                + " 获得 " + original + "，目前仅持有 " + yearsHeld + " 年");
+            }
         }
-
-        // 注：持有年限由管理员审核学员上传的驾驶证材料来判断
+        // 注：如果 licenseObtainedDate 为 null（外校学员或旧数据），持有年限由管理员审核驾驶证材料人工判断
     }
 
     /**

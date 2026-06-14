@@ -108,7 +108,7 @@ public class CoachServiceImpl extends ServiceImpl<CoachMapper, Coach> implements
         int passedAllCount = 0;
         if (totalExamStudents > 0) {
             for (Integer studentId : examStudentIds) {
-                Set<Integer> passedSubjects = examRegistrationMapper.findPassedSubjectsByStudent(studentId);
+                Set<Integer> passedSubjects = examRegistrationMapper.findPassedSubjectsByStudent(studentId, null);
                 if (passedSubjects.contains(1) && passedSubjects.contains(2) &&
                         passedSubjects.contains(3) && passedSubjects.contains(4)) {
                     passedAllCount++;

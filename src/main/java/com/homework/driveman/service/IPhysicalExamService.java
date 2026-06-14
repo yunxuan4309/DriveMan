@@ -14,8 +14,12 @@ public interface IPhysicalExamService extends IService<PhysicalExam> {
 
     /**
      * 学员提交体检申请
+     * @param studentId   学员ID
+     * @param venueId     体检地点ID
+     * @param examDate    预约日期 (yyyy-MM-dd)
+     * @param licenseType 关联车型（体检标准因车型而异，默认使用学员当前车型）
      */
-    PhysicalExam apply(Integer studentId, Integer venueId, String examDate);
+    PhysicalExam apply(Integer studentId, Integer venueId, String examDate, String licenseType);
 
     /**
      * 查询学员的体检申请记录
@@ -44,15 +48,22 @@ public interface IPhysicalExamService extends IService<PhysicalExam> {
 
     /**
      * 管理员分页查询体检申请，支持按学员姓名和状态筛选
-     * @param page        分页参数
-     * @param studentName 学员姓名关键词（可选）
-     * @param status      状态（可选）
      */
     Page<Map<String, Object>> pageAll(Page<PhysicalExam> page, String studentName, Integer status);
 
     /**
-     * 检查学员是否体检不合格（status=3 已完成 且 result=0 不合格），
-     * 不合格则抛出 ServiceException 阻止后续操作
+     * 检查学员是否存在"已完成的体检且结果为不合格"的记录，
+     * 不合格则抛出 ServiceException 阻止后续操作（考试报名、增驾等）。
      */
     void checkPassed(Integer studentId);
+
+    /**
+     * 检查学员是否持有指定车型的体检合格记录（status=3, result=1）
+     * 用于增驾场景：升级增驾需要目标车型的体检合格记录
+     *
+     * @param studentId   学员ID
+     * @param licenseType 目标车型
+     * @throws ServiceException 如果没有该车型的体检合格记录
+     */
+    void checkPassedForLicense(Integer studentId, String licenseType);
 }

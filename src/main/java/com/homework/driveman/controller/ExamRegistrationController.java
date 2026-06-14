@@ -152,8 +152,9 @@ public class ExamRegistrationController {
             }
         }
 
-        // ③ 检测该科目是否已通过（通过后不可再次报名）
-        Set<Integer> passedSubjects = examRegistrationMapper.findPassedSubjectsByStudent(studentId);
+        // ③ 检测该科目是否已通过（按当前车型过滤，防止增驾后旧车型通过记录污染）
+        Set<Integer> passedSubjects = examRegistrationMapper.findPassedSubjectsByStudent(
+                studentId, student.getLicenseType());
         if (passedSubjects.contains(session.getSubject())) {
             throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
                     "您已通过科目" + session.getSubject() + "，无需重复报名");
@@ -284,14 +285,41 @@ public class ExamRegistrationController {
         }
 
         int passScore = getPassScore();
+        boolean passed = score >= passScore;
         registration.setScore(score);
-        registration.setPassStatus(score >= passScore ? 1 : 0);
+        registration.setPassStatus(passed ? 1 : 0);
         registration.setFileId(fileId);
         registration.setStatus(3); // 已考试
-        if (score < passScore) {
+        if (!passed) {
             registration.setRetakeCount(registration.getRetakeCount() + 1);
         }
         examRegistrationService.updateById(registration);
+
+        // 合格时检查当前车型是否全科通过，首次全科通过则自动记录驾照获取日期
+        if (passed) {
+            ExamSession session = examSessionService.getById(registration.getSessionId());
+            if (session != null && session.getLicenseType() != null) {
+                // 查询该车型要求的所有科目
+                List<LicenseConfig> configs = licenseConfigMapper.selectList(
+                        new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<LicenseConfig>()
+                                .eq(LicenseConfig::getLicenseType, session.getLicenseType()));
+                Set<Integer> requiredSubjects = configs.stream()
+                        .map(LicenseConfig::getSubject).collect(java.util.stream.Collectors.toSet());
+
+                // 查询该学员在当前车型下已通过的科目（含本次刚通过的）
+                Set<Integer> passedSubjects = examRegistrationMapper.findPassedSubjectsByStudent(
+                        registration.getStudentId(), session.getLicenseType());
+
+                if (!requiredSubjects.isEmpty() && passedSubjects.containsAll(requiredSubjects)) {
+                    User student = userService.getById(registration.getStudentId());
+                    if (student != null && student.getLicenseObtainedDate() == null) {
+                        student.setLicenseObtainedDate(LocalDateTime.now());
+                        userService.updateById(student);
+                    }
+                }
+            }
+        }
+
         return JsonResult.ok();
     }
 
