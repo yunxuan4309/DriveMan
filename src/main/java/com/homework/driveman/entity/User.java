@@ -3,6 +3,7 @@ package com.homework.driveman.entity;
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -51,6 +52,15 @@ public class User {
 
     /** 驾照获取日期（当前车型全科通过时自动记录），用于增驾持有年限校验 */
     private LocalDateTime licenseObtainedDate;
+
+    /** 已有驾照类型（外校学员报名时填写） */
+    private String existingLicense;
+
+    /** 已有驾照驾龄（年） */
+    private BigDecimal existingLicenseYears;
+
+    /** 已有驾照证明文件ID */
+    private Integer existingLicenseFileId;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;

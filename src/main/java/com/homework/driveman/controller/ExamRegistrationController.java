@@ -136,6 +136,26 @@ public class ExamRegistrationController {
             }
         }
 
+        // ①⑥ 增驾免考科目限制：有进行中的增驾且该科目已设为免考，禁止报名
+        if (session.getLicenseType() != null) {
+            com.homework.driveman.entity.LicenseUpgrade activeUpgrade = licenseUpgradeMapper.selectOne(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.homework.driveman.entity.LicenseUpgrade>()
+                            .eq(com.homework.driveman.entity.LicenseUpgrade::getStudentId, studentId)
+                            .eq(com.homework.driveman.entity.LicenseUpgrade::getTargetLicense, session.getLicenseType())
+                            .eq(com.homework.driveman.entity.LicenseUpgrade::getStatus, 1)
+                            .ne(com.homework.driveman.entity.LicenseUpgrade::getExamStatus, 1)
+                            .orderByDesc(com.homework.driveman.entity.LicenseUpgrade::getCreateTime)
+                            .last("LIMIT 1"));
+            if (activeUpgrade != null && activeUpgrade.getSkipSubjects() != null) {
+                for (String s : activeUpgrade.getSkipSubjects().split(",")) {
+                    if (Integer.parseInt(s.trim()) == session.getSubject()) {
+                        throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                                "该科目已设为免考，无需重复报名考试");
+                    }
+                }
+            }
+        }
+
         // ② 校验学时是否达标
         LicenseConfig config = licenseConfigMapper.selectOne(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<LicenseConfig>()
@@ -151,7 +171,7 @@ public class ExamRegistrationController {
         }
 
         // ③ 检测该科目是否已通过（按车型过滤，避免增驾后旧车型通过记录污染）
-        Set<Integer> passedSubjects = examRegistrationMapper.findPassedSubjectsByStudent(studentId, student.getLicenseType());
+        Set<Integer> passedSubjects = examRegistrationMapper.findPassedSubjectsByStudent(studentId, session.getLicenseType());
         if (passedSubjects.contains(session.getSubject())) {
             throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
                     "您已通过科目" + session.getSubject() + "，无需重复报名");

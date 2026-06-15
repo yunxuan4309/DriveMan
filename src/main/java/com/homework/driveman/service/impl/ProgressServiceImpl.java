@@ -4,10 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.homework.driveman.entity.ExamRegistration;
 import com.homework.driveman.entity.ExamSession;
 import com.homework.driveman.entity.LicenseConfig;
+import com.homework.driveman.entity.LicenseUpgrade;
 import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
 import com.homework.driveman.mapper.ExamSessionMapper;
 import com.homework.driveman.mapper.LicenseConfigMapper;
+import com.homework.driveman.mapper.LicenseUpgradeMapper;
 import com.homework.driveman.mapper.TrainingRecordMapper;
 import com.homework.driveman.mapper.ExamRegistrationMapper;
 import com.homework.driveman.service.IProgressService;
@@ -46,6 +48,9 @@ public class ProgressServiceImpl implements IProgressService {
     @Autowired
     private ExamSessionMapper examSessionMapper;
 
+    @Autowired
+    private LicenseUpgradeMapper licenseUpgradeMapper;
+
     @Override
     public Map<String, Object> getProgress(Integer studentId) {
         // 1. 查出学员信息和报考车型
@@ -56,6 +61,32 @@ public class ProgressServiceImpl implements IProgressService {
         String type = student.getLicenseType();
         if (type == null) {
             throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "该学员未填写报考车型");
+        }
+
+        // 1.5 检查是否有进行中的增驾（已审核通过、正在考试）
+        boolean hasActiveUpgrade = false;
+        String upgradeTargetLicense = null;
+        Set<Integer> upgradeSkipSubjects = new HashSet<>();
+        if (student.getRole() == 1) {
+            LicenseUpgrade activeUpgrade = licenseUpgradeMapper.selectOne(
+                    new LambdaQueryWrapper<LicenseUpgrade>()
+                            .eq(LicenseUpgrade::getStudentId, studentId)
+                            .eq(LicenseUpgrade::getStatus, 1)
+                            .eq(LicenseUpgrade::getExamStatus, 0)
+                            .orderByDesc(LicenseUpgrade::getCreateTime)
+                            .last("LIMIT 1"));
+            if (activeUpgrade != null) {
+                hasActiveUpgrade = true;
+                upgradeTargetLicense = activeUpgrade.getTargetLicense();
+                // 切换到目标车型的进度展示
+                type = activeUpgrade.getTargetLicense();
+                // 解析免考科目
+                if (activeUpgrade.getSkipSubjects() != null && !activeUpgrade.getSkipSubjects().isEmpty()) {
+                    for (String s : activeUpgrade.getSkipSubjects().split(",")) {
+                        upgradeSkipSubjects.add(Integer.parseInt(s.trim()));
+                    }
+                }
+            }
         }
 
         // 2. 查出该车型的科目配置（按 sort_order 排序）
@@ -116,6 +147,11 @@ public class ProgressServiceImpl implements IProgressService {
             BigDecimal trained = BigDecimal.ZERO;
             if (cfg.getRequiredHours().compareTo(BigDecimal.ZERO) > 0) {
                 trained = trainingRecordMapper.sumTrainingHours(studentId, type, subject);
+                // 进行中的增驾：同时累加原车型的已学学时
+                if (hasActiveUpgrade && student.getLicenseType() != null) {
+                    trained = trained.add(trainingRecordMapper.sumTrainingHours(
+                            studentId, student.getLicenseType(), subject));
+                }
             }
 
             // 判断状态
@@ -134,7 +170,11 @@ public class ProgressServiceImpl implements IProgressService {
                 subjectData.put("examItems", null);
             }
 
-            if (passedSubjects.contains(subject)) {
+            if (hasActiveUpgrade && upgradeSkipSubjects.contains(subject)) {
+                status = "skipped";
+                subjectData.put("score", null);
+                prevPassed = true;
+            } else if (passedSubjects.contains(subject)) {
                 status = "passed";
                 subjectData.put("score", scoreMap.getOrDefault(subject, 0));
                 prevPassed = true;
@@ -169,17 +209,27 @@ public class ProgressServiceImpl implements IProgressService {
         result.put("licenseType", type);
         result.put("examMode", examMode);
         result.put("certName", certName);
+        // 增驾进度标识
+        if (hasActiveUpgrade) {
+            result.put("hasActiveUpgrade", true);
+            result.put("upgradeTargetLicense", upgradeTargetLicense);
+            result.put("upgradeSkipSubjects", new ArrayList<>(upgradeSkipSubjects));
+        }
         result.put("subjects", subjects);
 
-        // 统计总体进度
+        // 统计总体进度（免考科目计入已通过）
+        Set<Integer> allEffectivePassed = new HashSet<>(passedSubjects);
+        if (hasActiveUpgrade) {
+            allEffectivePassed.addAll(upgradeSkipSubjects);
+        }
         long total = configs.size();
-        long passed = passedSubjects.stream().filter(s ->
+        long passed = allEffectivePassed.stream().filter(s ->
                 configs.stream().anyMatch(c -> c.getSubject() == s)).count();
         result.put("progressPercent", total > 0 ? (int) (passed * 100 / total) : 0);
 
-        // 判断是否全部科目已通过
+        // 判断是否全部科目已通过（含免考）
         boolean allPassed = configs.stream()
-                .allMatch(c -> passedSubjects.contains(c.getSubject()));
+                .allMatch(c -> allEffectivePassed.contains(c.getSubject()));
         result.put("allPassed", allPassed);
 
         // 特种车辆双科通过且有证书名称 → 可结业领证

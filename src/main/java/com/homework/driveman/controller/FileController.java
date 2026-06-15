@@ -77,9 +77,9 @@ public class FileController {
 
     @Operation(summary = "上传文件",
             description = "fileType: id_card_front / id_card_back / physical_exam / registration_pdf / " +
-                    "admission_ticket / training_record / coach_qualification / exam_score\n" +
+                    "admission_ticket / training_record / coach_qualification / exam_score / existing_license\n" +
                     "bizType: user_profile / enrollment / exam_ticket / registration_form / " +
-                    "training_record / physical_exam / license_upgrade / coach_qualification / exam_score\n" +
+                    "training_record / physical_exam / license_upgrade / coach_qualification / exam_score / existing_license\n" +
                     "普通用户只能上传自己的文件，管理员可上传任意用户文件")
     @PostMapping("/upload")
     public JsonResult<File> upload(@RequestParam Integer userId,
@@ -102,8 +102,7 @@ public class FileController {
     @Operation(summary = "分页查询当前登录用户自己的文件",
             description = "支持多维度过滤：bizType（业务分类）、fileType（文件格式）、keyword（文件名搜索）\n" +
                     "bizType 可选值: user_profile / enrollment / exam_ticket / registration_form / " +
-                    "training_record / physical_exam / license_upgrade / coach_qualification / exam_score\n" +
-                    "training_record / physical_exam / license_upgrade / coach_qualification")
+                    "training_record / physical_exam / license_upgrade / coach_qualification / exam_score / existing_license")
     @GetMapping("/my")
     public JsonResult<Page<File>> listMyFiles(
             @RequestParam(defaultValue = "1") int page,

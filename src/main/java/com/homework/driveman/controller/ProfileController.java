@@ -95,6 +95,9 @@ public class ProfileController {
         basic.put("statusDesc", getStudentStatusDesc(student.getStatus()));
         basic.put("enrollDate", student.getCreateTime());
         basic.put("licenseObtainedDate", student.getLicenseObtainedDate());
+        basic.put("existingLicense", student.getExistingLicense());
+        basic.put("existingLicenseYears", student.getExistingLicenseYears());
+        basic.put("existingLicenseFileId", student.getExistingLicenseFileId());
         profile.put("basic", basic);
 
         // 2. 报名套餐（subject IS NULL 有多条时取金额最大的=主套餐）
@@ -139,16 +142,24 @@ public class ProfileController {
             progress.put("progressPercent", p.getOrDefault("progressPercent", 0));
             progress.put("allPassed", p.getOrDefault("allPassed", false));
 
+            // 增驾进度透传
+            if (p.containsKey("hasActiveUpgrade") && Boolean.TRUE.equals(p.get("hasActiveUpgrade"))) {
+                progress.put("hasActiveUpgrade", true);
+                progress.put("upgradeTargetLicense", p.get("upgradeTargetLicense"));
+                progress.put("upgradeSkipSubjects", p.get("upgradeSkipSubjects"));
+            }
+
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> subjects = (List<Map<String, Object>>) p.get("subjects");
             List<Map<String, Object>> passedList = new ArrayList<>();
             if (subjects != null) {
                 for (Map<String, Object> s : subjects) {
-                    if ("passed".equals(s.get("status"))) {
+                    if ("passed".equals(s.get("status")) || "skipped".equals(s.get("status"))) {
                         Map<String, Object> item = new LinkedHashMap<>();
                         item.put("subject", s.get("subject"));
                         item.put("description", s.get("description"));
                         item.put("score", s.getOrDefault("score", 0));
+                        item.put("status", s.get("status"));
                         passedList.add(item);
                     }
                 }

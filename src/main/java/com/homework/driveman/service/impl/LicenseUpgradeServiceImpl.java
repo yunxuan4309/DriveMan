@@ -5,9 +5,11 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.homework.driveman.entity.FeeStandard;
+import com.homework.driveman.entity.LicenseConfig;
 import com.homework.driveman.entity.LicenseUpgrade;
 import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
+import com.homework.driveman.mapper.LicenseConfigMapper;
 import com.homework.driveman.mapper.LicenseUpgradeMapper;
 import com.homework.driveman.service.IFeeStandardService;
 import com.homework.driveman.service.ILicenseUpgradeService;
@@ -47,6 +49,9 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
 
     @Autowired
     private com.homework.driveman.mapper.PaymentRecordMapper paymentRecordMapper;
+
+    @Autowired
+    private LicenseConfigMapper licenseConfigMapper;
 
     // ==================== 车型等级定义 ====================
 
@@ -337,11 +342,16 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
                 upgrade.getStudentId(), upgrade.getTargetLicense());
         result.put("passedSubjects", passedSubjects);
 
-        // 4. 计算待考科目
+        // 4. 计算待考科目（只检查目标车型实际配置的科目）
+        Set<Integer> targetSubjects = licenseConfigMapper.selectList(
+                new LambdaQueryWrapper<LicenseConfig>()
+                        .eq(LicenseConfig::getLicenseType, upgrade.getTargetLicense())
+                        .select(LicenseConfig::getSubject))
+                .stream().map(LicenseConfig::getSubject).collect(Collectors.toSet());
         List<Integer> pendingSubjects = new ArrayList<>();
-        for (int i = 1; i <= 4; i++) {
-            if (!skippedSet.contains(i) && !passedSubjects.contains(i)) {
-                pendingSubjects.add(i);
+        for (Integer subject : targetSubjects) {
+            if (!skippedSet.contains(subject) && !passedSubjects.contains(subject)) {
+                pendingSubjects.add(subject);
             }
         }
         result.put("pendingSubjects", pendingSubjects);
@@ -381,7 +391,7 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
                     "学员尚未支付增驾费，请先完成缴费");
         }
 
-        // 2. 检查所有未免考科目是否已通过
+        // 2. 查询目标车型实际配置的科目（只检查这些科目）
         Set<Integer> skippedSet = new HashSet<>();
         if (upgrade.getSkipSubjects() != null && !upgrade.getSkipSubjects().isEmpty()) {
             for (String s : upgrade.getSkipSubjects().split(",")) {
@@ -389,13 +399,19 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
             }
         }
 
+        List<LicenseConfig> targetConfigs = licenseConfigMapper.selectList(
+                new LambdaQueryWrapper<LicenseConfig>()
+                        .eq(LicenseConfig::getLicenseType, upgrade.getTargetLicense()));
+        Set<Integer> targetSubjects = targetConfigs.stream()
+                .map(LicenseConfig::getSubject).collect(Collectors.toSet());
+
         List<Integer> passedSubjects = baseMapper.selectPassedSubjects(
                 upgrade.getStudentId(), upgrade.getTargetLicense());
 
         List<Integer> pendingSubjects = new ArrayList<>();
-        for (int i = 1; i <= 4; i++) {
-            if (!skippedSet.contains(i) && !passedSubjects.contains(i)) {
-                pendingSubjects.add(i);
+        for (Integer subject : targetSubjects) {
+            if (!skippedSet.contains(subject) && !passedSubjects.contains(subject)) {
+                pendingSubjects.add(subject);
             }
         }
 

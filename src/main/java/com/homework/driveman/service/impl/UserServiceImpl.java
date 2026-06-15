@@ -27,6 +27,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public void register(User user) {
+        // 校验用户名格式（不能包含中文）
+        if (user.getUsername() == null || !user.getUsername().matches("^[a-zA-Z0-9_-]+$")) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "用户名只能包含字母、数字、下划线和连字符，不能包含中文");
+        }
+
         // 校验用户名是否已存在
         Long count = count(new LambdaQueryWrapper<User>()
                 .eq(User::getUsername, user.getUsername()));
@@ -95,6 +100,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Override
     @Transactional
     public void coachRegister(CoachRegisterDTO dto) {
+        // 校验用户名格式（不能包含中文）
+        if (dto.getUsername() == null || !dto.getUsername().matches("^[a-zA-Z0-9_-]+$")) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "用户名只能包含字母、数字、下划线和连字符，不能包含中文");
+        }
+
         // 校验唯一性
         Long usernameCount = count(new LambdaQueryWrapper<User>()
                 .eq(User::getUsername, dto.getUsername()));
