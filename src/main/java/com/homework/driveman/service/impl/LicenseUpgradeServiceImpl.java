@@ -153,7 +153,7 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
     // ==================== 业务方法 ====================
 
     @Override
-    public LicenseUpgrade apply(Integer studentId, String targetLicense, Integer upgradeType, Integer licenseFileId, boolean skipAgeCheck) {
+    public LicenseUpgrade apply(Integer studentId, String targetLicense, Integer upgradeType, String licenseFileId, boolean skipAgeCheck) {
         User student = userService.getById(studentId);
         if (student == null) {
             throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "学员不存在");
@@ -164,10 +164,12 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
 
         String originalLicense = student.getLicenseType();
 
-        // 检查是否已有进行中的申请
+        // 检查是否已有进行中的申请（已完结的不拦截）
         Long count = lambdaQuery()
                 .eq(LicenseUpgrade::getStudentId, studentId)
                 .in(LicenseUpgrade::getStatus, 0, 1)
+                .and(w -> w.ne(LicenseUpgrade::getExamStatus, 1)
+                        .or().isNull(LicenseUpgrade::getExamStatus))
                 .count();
         if (count > 0) {
             throw new ServiceException(ServiceCode.ERROR_CONFLICT, "您已有进行中的增驾申请");
@@ -200,10 +202,28 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
             }
         } else if (upgradeType == 2) {
             // 升级增驾：校验年龄、车型路径，驾驶证材料由管理员审核时校验
-            if (!skipAgeCheck) {
-                validateUpgradeBasicConditions(student, originalLicense, targetLicense);
+            // 如果当前驾照不满足升级路径，通过已完成的增驾记录追溯原始驾照
+            // （如 C1→C6 后用户持有 C6，但 C6 不是 B1 的允许来源，应追溯为 C1）
+            String effectiveOriginal = originalLicense;
+            boolean tracedBack = false;
+            List<UpgradePath> candidatePaths = UPGRADE_RULES.get(targetLicense);
+            if (candidatePaths != null) {
+                boolean directMatch = false;
+                for (UpgradePath p : candidatePaths) {
+                    if (p.source.equals(originalLicense)) { directMatch = true; break; }
+                }
+                if (!directMatch) {
+                    String resolved = resolveOriginalLicense(studentId, originalLicense, targetLicense);
+                    if (!resolved.equals(originalLicense)) {
+                        effectiveOriginal = resolved;
+                        tracedBack = true;
+                    }
+                }
             }
-            if (licenseFileId == null) {
+            if (!skipAgeCheck) {
+                validateUpgradeBasicConditions(student, effectiveOriginal, targetLicense, tracedBack);
+            }
+            if (licenseFileId == null || licenseFileId.isEmpty()) {
                 throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "升级增驾需上传驾驶证材料");
             }
         } else {
@@ -231,6 +251,17 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
                 .eq(LicenseUpgrade::getStudentId, studentId)
                 .orderByDesc(LicenseUpgrade::getCreateTime)
                 .list();
+    }
+
+    @Override
+    public Page<LicenseUpgrade> pageMyUpgrades(Page<LicenseUpgrade> page, Integer studentId,
+                                                Integer status, String targetLicense) {
+        return lambdaQuery()
+                .eq(LicenseUpgrade::getStudentId, studentId)
+                .eq(status != null, LicenseUpgrade::getStatus, status)
+                .eq(targetLicense != null && !targetLicense.isEmpty(), LicenseUpgrade::getTargetLicense, targetLicense)
+                .orderByDesc(LicenseUpgrade::getCreateTime)
+                .page(page);
     }
 
     @Override
@@ -449,10 +480,38 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
     // ==================== 校验方法 ====================
 
     /**
+     * 追溯原始驾照：通过已完成的增驾记录链式查找原始驾照类型
+     * 例如 C1→C6 完成后当前为 C6，申请 B1 时 C6 不满足路径，追溯返回 C1
+     */
+    private String resolveOriginalLicense(Integer studentId, String currentLicense, String targetLicense) {
+        List<UpgradePath> paths = UPGRADE_RULES.get(targetLicense);
+        if (paths == null) return currentLicense;
+
+        for (UpgradePath p : paths) {
+            if (p.source.equals(currentLicense)) return currentLicense;
+        }
+
+        LicenseUpgrade completed = lambdaQuery()
+                .eq(LicenseUpgrade::getStudentId, studentId)
+                .eq(LicenseUpgrade::getTargetLicense, currentLicense)
+                .eq(LicenseUpgrade::getStatus, 1)
+                .eq(LicenseUpgrade::getExamStatus, 1)
+                .orderByDesc(LicenseUpgrade::getCreateTime)
+                .last("LIMIT 1")
+                .one();
+
+        if (completed != null) {
+            return resolveOriginalLicense(studentId, completed.getOriginalLicense(), targetLicense);
+        }
+
+        return currentLicense;
+    }
+
+    /**
      * 升级增驾基础校验（提交申请时执行）
      * 持有年限由管理员通过审核驾驶证材料来判断
      */
-    private void validateUpgradeBasicConditions(User student, String original, String target) {
+    private void validateUpgradeBasicConditions(User student, String original, String target, boolean tracedBack) {
         // 1. 校验升级路径是否合法
         List<UpgradePath> paths = UPGRADE_RULES.get(target);
         if (paths == null) {
@@ -488,7 +547,7 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
         }
 
         // 3. 校验持有年限：用 license_obtained_date 自动计算
-        if (student.getLicenseObtainedDate() != null) {
+        if (!tracedBack && student.getLicenseObtainedDate() != null) {
             int yearsHeld = Period.between(student.getLicenseObtainedDate().toLocalDate(), LocalDate.now()).getYears();
             if (yearsHeld < matchedPath.years) {
                 throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
@@ -496,8 +555,28 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
                                 + " 年，您于 " + student.getLicenseObtainedDate().toLocalDate()
                                 + " 获得 " + original + "，目前仅持有 " + yearsHeld + " 年");
             }
+        } else if (tracedBack) {
+            // 追溯模式：通过已完成增驾记录的创建时间估算最低持有年限
+            LicenseUpgrade prev = lambdaQuery()
+                    .eq(LicenseUpgrade::getStudentId, student.getUserId())
+                    .eq(LicenseUpgrade::getTargetLicense, student.getLicenseType())
+                    .eq(LicenseUpgrade::getStatus, 1)
+                    .eq(LicenseUpgrade::getExamStatus, 1)
+                    .orderByDesc(LicenseUpgrade::getCreateTime)
+                    .last("LIMIT 1")
+                    .one();
+            if (prev != null && prev.getCreateTime() != null) {
+                int yearsHeld = Period.between(prev.getCreateTime().toLocalDate(), LocalDate.now()).getYears();
+                if (yearsHeld < matchedPath.years) {
+                    throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                            "追溯来源 " + original + " 持有年限不足，自 " + prev.getCreateTime().toLocalDate()
+                                    + " 起持续持有，当前约 " + yearsHeld + " 年，增驾 " + target
+                                    + " 需 " + matchedPath.years + " 年。"
+                                    + "如实际持有年限已满足，请点击\"演示申请\"跳过校验");
+                }
+            }
         }
-        // 注：如果 licenseObtainedDate 为 null（外校学员或旧数据），持有年限由管理员审核驾驶证材料人工判断
+        // 注：tracedBack=true 但找不到参考记录时（极少发生），持有年限由管理员审核驾驶证材料人工判断
     }
 
     /**

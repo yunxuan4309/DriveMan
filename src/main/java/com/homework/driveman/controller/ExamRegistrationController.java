@@ -399,6 +399,7 @@ public class ExamRegistrationController {
                 if (session != null) {
                     map.put("examDate", session.getExamDate());
                     map.put("location", session.getLocation());
+                    map.put("licenseType", session.getLicenseType());
                 }
             }
             

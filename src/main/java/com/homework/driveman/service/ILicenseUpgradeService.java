@@ -21,12 +21,18 @@ public interface ILicenseUpgradeService extends IService<LicenseUpgrade> {
      * @param licenseFileId 驾驶证材料文件ID（升级增驾时必填）
      * @param skipAgeCheck 是否跳过年龄/路径/驾龄校验（演示用，默认 false）
      */
-    LicenseUpgrade apply(Integer studentId, String targetLicense, Integer upgradeType, Integer licenseFileId, boolean skipAgeCheck);
+    LicenseUpgrade apply(Integer studentId, String targetLicense, Integer upgradeType, String licenseFileId, boolean skipAgeCheck);
 
     /**
      * 查询学员的增驾申请记录
      */
     List<LicenseUpgrade> listByStudent(Integer studentId);
+
+    /**
+     * 分页查询学员的增驾申请记录（支持状态/目标车型筛选）
+     */
+    Page<LicenseUpgrade> pageMyUpgrades(Page<LicenseUpgrade> page, Integer studentId,
+                                        Integer status, String targetLicense);
 
     /**
      * 管理员审核增驾申请

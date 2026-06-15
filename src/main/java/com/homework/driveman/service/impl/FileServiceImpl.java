@@ -42,7 +42,8 @@ public class FileServiceImpl extends ServiceImpl<FileMapper, File> implements IF
     private static final Set<String> ALLOWED_TYPES = Set.of(
             "id_card_front", "id_card_back", "physical_exam",
             "registration_pdf", "admission_ticket",
-            "training_record", "coach_qualification", "exam_score"
+            "training_record", "coach_qualification", "exam_score",
+            "existing_license"
     );
 
     /** 各类文件允许的后缀（小写，不含点） */

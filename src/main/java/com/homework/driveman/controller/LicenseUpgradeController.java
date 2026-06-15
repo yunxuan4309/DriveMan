@@ -46,8 +46,17 @@ public class LicenseUpgradeController {
         String targetLicense = (String) body.get("targetLicense");
         Integer upgradeType = body.get("upgradeType") != null
                 ? ((Number) body.get("upgradeType")).intValue() : null;
-        Integer licenseFileId = body.get("licenseFileId") != null
-                ? ((Number) body.get("licenseFileId")).intValue() : null;
+        // licenseFileId 支持：单值 (123)、逗号分隔字符串 ("12,15")、数组 ([12,15])
+        String licenseFileId = null;
+        Object fileIdObj = body.get("licenseFileId");
+        if (fileIdObj instanceof Number) {
+            licenseFileId = String.valueOf(((Number) fileIdObj).intValue());
+        } else if (fileIdObj instanceof String && !((String) fileIdObj).isEmpty()) {
+            licenseFileId = (String) fileIdObj;
+        } else if (fileIdObj instanceof java.util.List) {
+            licenseFileId = ((java.util.List<?>) fileIdObj).stream()
+                    .map(Object::toString).collect(java.util.stream.Collectors.joining(","));
+        }
         boolean skipAgeCheck = body.get("skipAgeCheck") != null
                 && Boolean.TRUE.equals(body.get("skipAgeCheck"));
         LicenseUpgrade upgrade = licenseUpgradeService.apply(
@@ -56,12 +65,19 @@ public class LicenseUpgradeController {
     }
 
     @RequireRole(1)
-    @Operation(summary = "查看我的增驾申请", description = "学员查看自己的增驾申请记录")
+    @Operation(summary = "查看我的增驾申请",
+            description = "学员分页查看自己的增驾申请记录，支持按状态/目标车型筛选")
     @GetMapping("/my")
-    public JsonResult<List<LicenseUpgrade>> listMyUpgrades(HttpServletRequest request) {
+    public JsonResult<Page<LicenseUpgrade>> listMyUpgrades(
+            HttpServletRequest request,
+            @RequestParam(defaultValue = "1") @Parameter(description = "页码") int page,
+            @RequestParam(defaultValue = "5") @Parameter(description = "每页条数") int size,
+            @RequestParam(required = false) @Parameter(description = "审核状态: 0-待审核,1-通过,2-不通过") Integer status,
+            @RequestParam(required = false) @Parameter(description = "目标准驾车型") String targetLicense) {
         CurrentUser user = getCurrentUser(request);
-        List<LicenseUpgrade> list = licenseUpgradeService.listByStudent(user.getUserId());
-        return JsonResult.ok(list);
+        Page<LicenseUpgrade> result = licenseUpgradeService.pageMyUpgrades(
+                new Page<>(page, size), user.getUserId(), status, targetLicense);
+        return JsonResult.ok(result);
     }
 
     // ==================== 管理员端接口 ====================

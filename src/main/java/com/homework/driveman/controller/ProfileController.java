@@ -56,6 +56,9 @@ public class ProfileController {
     @Autowired
     private ExamRegistrationMapper examRegistrationMapper;
 
+    @Autowired
+    private LicenseUpgradeMapper licenseUpgradeMapper;
+
     private CurrentUser getCurrentUser(HttpServletRequest request) {
         return (CurrentUser) request.getAttribute("currentUser");
     }
@@ -100,7 +103,32 @@ public class ProfileController {
         basic.put("existingLicenseFileId", student.getExistingLicenseFileId());
         profile.put("basic", basic);
 
-        // 2. 报名套餐（subject IS NULL 有多条时取金额最大的=主套餐）
+        // 2. 增驾历史（已完成的增驾记录）
+        List<Map<String, Object>> upgradeHistory = new ArrayList<>();
+        List<LicenseUpgrade> completedUpgrades = licenseUpgradeMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<LicenseUpgrade>()
+                        .eq(LicenseUpgrade::getStudentId, userId)
+                        .eq(LicenseUpgrade::getStatus, 1)
+                        .eq(LicenseUpgrade::getExamStatus, 1)
+                        .orderByAsc(LicenseUpgrade::getCreateTime));
+        for (LicenseUpgrade u : completedUpgrades) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("originalLicense", u.getOriginalLicense());
+            item.put("targetLicense", u.getTargetLicense());
+            item.put("completeTime", u.getUpdateTime());
+            upgradeHistory.add(item);
+        }
+        // 如果有增驾历史且当前驾照与原始报名车型不同，增加 label 提示
+        String originalEnrollLicense = student.getLicenseType();
+        if (!upgradeHistory.isEmpty()) {
+            // 使用第一条增驾记录的 originalLicense 作为最初报名车型
+            originalEnrollLicense = (String) upgradeHistory.get(0).get("originalLicense");
+        }
+        basic.put("originalEnrollLicense", originalEnrollLicense);
+        basic.put("upgradeHistory", upgradeHistory);
+        profile.put("upgradeHistory", upgradeHistory);
+
+        // 3. 报名套餐（subject IS NULL 有多条时取金额最大的=主套餐）
         List<FeeStandard> pkgs = feeStandardMapper.selectList(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<FeeStandard>()
                         .eq(FeeStandard::getLicenseType, student.getLicenseType())
