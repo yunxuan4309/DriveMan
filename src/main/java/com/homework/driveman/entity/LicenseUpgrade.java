@@ -43,6 +43,9 @@ public class LicenseUpgrade {
     /** 驾驶证材料文件ID（学员上传的驾驶证照片/扫描件） */
     private Integer licenseFileId;
 
+    /** 跳过的科目编号（逗号分隔，如 "1,3" 表示科目一和科目三免考） */
+    private String skipSubjects;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 

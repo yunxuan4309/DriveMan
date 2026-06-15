@@ -203,6 +203,12 @@ public class CoachPortalController {
             }
         }
 
+        // 自动回填学员当前车型
+        User student = userService.getById(record.getStudentId());
+        if (student != null && student.getLicenseType() != null) {
+            record.setLicenseType(student.getLicenseType());
+        }
+
         trainingRecordMapper.insert(record);
         return JsonResult.ok();
     }

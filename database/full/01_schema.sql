@@ -241,6 +241,7 @@ CREATE TABLE IF NOT EXISTS `license_upgrade` (
     `remark` VARCHAR(200) DEFAULT NULL COMMENT '审核备注',
     `exam_status` TINYINT DEFAULT 0 COMMENT '考试状态: 0-待考试, 1-考试通过, 2-考试不通过',
     `exam_remark` VARCHAR(200) DEFAULT NULL COMMENT '考试不通过原因/备注',
+    `skip_subjects` VARCHAR(10) DEFAULT NULL COMMENT '跳过的科目编号(逗号分隔,如1,3)',
     `license_file_id` INT UNSIGNED DEFAULT NULL COMMENT '驾驶证材料文件ID（学员上传的驾驶证照片/扫描件）',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',

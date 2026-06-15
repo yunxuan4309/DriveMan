@@ -43,6 +43,9 @@ public class FamiliarizationRecordServiceImpl implements IFamiliarizationRecordS
     @Autowired
     private IPaymentRecordService paymentRecordService;
 
+    @Autowired
+    private com.homework.driveman.mapper.LicenseUpgradeMapper licenseUpgradeMapper;
+
     @Override
     @Transactional
     public FamiliarizationRecord apply(Integer studentId, Integer examSessionId, Integer carType) {
@@ -71,8 +74,17 @@ public class FamiliarizationRecordServiceImpl implements IFamiliarizationRecordS
 
         // 3. 校验车型匹配
         if (session.getLicenseType() != null && !session.getLicenseType().equals(student.getLicenseType())) {
-            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
-                    "该场次仅限 " + session.getLicenseType() + " 车型，您的车型为 " + student.getLicenseType());
+            // 例外：学员有该目标车型进行中的增驾申请时允许跨车型报名
+            Long upgradeCount = licenseUpgradeMapper.selectCount(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.homework.driveman.entity.LicenseUpgrade>()
+                            .eq(com.homework.driveman.entity.LicenseUpgrade::getStudentId, studentId)
+                            .eq(com.homework.driveman.entity.LicenseUpgrade::getTargetLicense, session.getLicenseType())
+                            .eq(com.homework.driveman.entity.LicenseUpgrade::getStatus, 1)
+                            .ne(com.homework.driveman.entity.LicenseUpgrade::getExamStatus, 1));
+            if (upgradeCount == 0) {
+                throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                        "该场次仅限 " + session.getLicenseType() + " 车型，您的车型为 " + student.getLicenseType());
+            }
         }
 
         // 4. 校验合场科目合法性：仅科目二（场地驾驶）和科目三（道路驾驶）需要合场

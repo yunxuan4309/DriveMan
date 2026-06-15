@@ -38,7 +38,7 @@ public class LicenseUpgradeController {
     // ==================== 学员端接口 ====================
 
     @RequireRole(1)
-    @Operation(summary = "提交增驾申请", description = "学员申请增驾（同级增驾/升级增驾）。升级增驾需先上传驾驶证材料。请求体: { targetLicense, upgradeType, licenseFileId? }")
+    @Operation(summary = "提交增驾申请", description = "学员申请增驾（同级增驾/升级增驾）。升级增驾需先上传驾驶证材料。请求体: { targetLicense, upgradeType, licenseFileId?, skipAgeCheck? }，skipAgeCheck=true 跳过年龄/路径/驾龄校验（演示用）")
     @PostMapping("/apply")
     public JsonResult<LicenseUpgrade> apply(HttpServletRequest request,
                                             @RequestBody Map<String, Object> body) {
@@ -48,8 +48,10 @@ public class LicenseUpgradeController {
                 ? ((Number) body.get("upgradeType")).intValue() : null;
         Integer licenseFileId = body.get("licenseFileId") != null
                 ? ((Number) body.get("licenseFileId")).intValue() : null;
+        boolean skipAgeCheck = body.get("skipAgeCheck") != null
+                && Boolean.TRUE.equals(body.get("skipAgeCheck"));
         LicenseUpgrade upgrade = licenseUpgradeService.apply(
-                user.getUserId(), targetLicense, upgradeType, licenseFileId);
+                user.getUserId(), targetLicense, upgradeType, licenseFileId, skipAgeCheck);
         return JsonResult.ok(upgrade);
     }
 
@@ -85,22 +87,29 @@ public class LicenseUpgradeController {
     }
 
     @RequireRole(3)
-    @Operation(summary = "审核增驾申请", description = "管理员审核增驾申请（通过/不通过）")
+    @Operation(summary = "审核增驾申请", description = "管理员审核增驾申请（通过/不通过）。skipSubjects 为跳过的科目编号(逗号分隔如1,3)，适用于同级增驾等无需全科考试的场景，不能跳过全部科目")
     @PutMapping("/{id}/audit")
     public JsonResult<Void> audit(@PathVariable Integer id,
                                   @RequestParam Integer status,
-                                  @RequestParam(required = false) String remark) {
-        licenseUpgradeService.audit(id, status, remark);
+                                  @RequestParam(required = false) String remark,
+                                  @RequestParam(required = false) String skipSubjects) {
+        licenseUpgradeService.audit(id, status, remark, skipSubjects);
         return JsonResult.ok();
     }
 
     @RequireRole(3)
-    @Operation(summary = "录入增驾考试成绩", description = "管理员录入增驾考试结果（通过/不通过），通过后更新学员车型")
-    @PutMapping("/{id}/exam-result")
-    public JsonResult<Void> recordExamResult(@PathVariable Integer id,
-                                             @RequestParam Integer examStatus,
-                                             @RequestParam(required = false) String examRemark) {
-        licenseUpgradeService.recordExamResult(id, examStatus, examRemark);
+    @Operation(summary = "查询增驾进度", description = "查看某增驾申请的支付状态、免考科目、已通过/待考科目")
+    @GetMapping("/{id}/progress")
+    public JsonResult<Map<String, Object>> progress(@PathVariable Integer id) {
+        return JsonResult.ok(licenseUpgradeService.getProgress(id));
+    }
+
+    @RequireRole(3)
+    @Operation(summary = "完成增驾",
+            description = "检查增驾费已支付 + 所有未免考科目已通过考试，满足条件后更新学员车型。不满足时返回错误提示")
+    @PostMapping("/{id}/complete")
+    public JsonResult<Void> complete(@PathVariable Integer id) {
+        licenseUpgradeService.completeUpgrade(id);
         return JsonResult.ok();
     }
 }

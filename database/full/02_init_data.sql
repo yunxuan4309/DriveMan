@@ -80,6 +80,18 @@ INSERT IGNORE INTO `fee_standard` (`license_type`, `subject`, `amount`, `descrip
 ('C1', 2, 200.00, '科目二模拟训练费'),
 ('C2', 2, 200.00, '科目二模拟训练费');
 
+-- 增驾套餐费
+INSERT IGNORE INTO `fee_standard` (`license_type`, `subject`, `amount`, `description`) VALUES
+('C6', NULL, 1500.00, 'C6增驾套餐'),
+('B1', NULL, 5000.00, 'B1增驾套餐'),
+('B2', NULL, 6000.00, 'B2增驾套餐'),
+('A1', NULL, 8000.00, 'A1增驾套餐'),
+('A2', NULL, 7000.00, 'A2增驾套餐'),
+('A3', NULL, 6000.00, 'A3增驾套餐'),
+('D', NULL, 1000.00, 'D增驾套餐'),
+('E', NULL, 800.00, 'E增驾套餐'),
+('C5', NULL, 4000.00, 'C5增驾套餐');
+
 -- 合场费（按车型+科目+用车类型定价）
 INSERT IGNORE INTO `fee_standard` (`license_type`, `subject`, `amount`, `description`) VALUES
 ('C1', 2, 200.00, '合场(教练车)'),

@@ -59,6 +59,9 @@ public class AppointmentController {
     @Autowired
     private IPhysicalExamService physicalExamService;
 
+    @Autowired
+    private com.homework.driveman.mapper.LicenseUpgradeMapper licenseUpgradeMapper;
+
     private CurrentUser getCurrentUser(HttpServletRequest request) {
         return (CurrentUser) request.getAttribute("currentUser");
     }
@@ -121,6 +124,24 @@ public class AppointmentController {
         }
         if (schedule.getStatus() != 1) {
             throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "该排班时段不可约");
+        }
+
+        // 校验学员车型与排班车型是否匹配
+        User student = userMapper.selectById(user.getUserId());
+        if (student != null && student.getLicenseType() != null
+                && schedule.getLicenseType() != null
+                && !student.getLicenseType().equals(schedule.getLicenseType())) {
+            // 例外：学员有该目标车型进行中的增驾申请时允许跨车型约课
+            Long upgradeCount = licenseUpgradeMapper.selectCount(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.homework.driveman.entity.LicenseUpgrade>()
+                            .eq(com.homework.driveman.entity.LicenseUpgrade::getStudentId, user.getUserId())
+                            .eq(com.homework.driveman.entity.LicenseUpgrade::getTargetLicense, schedule.getLicenseType())
+                            .eq(com.homework.driveman.entity.LicenseUpgrade::getStatus, 1)
+                            .ne(com.homework.driveman.entity.LicenseUpgrade::getExamStatus, 1));
+            if (upgradeCount == 0) {
+                throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                        "您的车型为 " + student.getLicenseType() + "，该排班仅限 " + schedule.getLicenseType() + " 车型");
+            }
         }
 
         // 校验学员-教练绑定关系

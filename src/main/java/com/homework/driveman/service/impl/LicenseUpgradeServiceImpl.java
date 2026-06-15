@@ -1,12 +1,17 @@
 package com.homework.driveman.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.homework.driveman.entity.FeeStandard;
 import com.homework.driveman.entity.LicenseUpgrade;
 import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
 import com.homework.driveman.mapper.LicenseUpgradeMapper;
+import com.homework.driveman.service.IFeeStandardService;
 import com.homework.driveman.service.ILicenseUpgradeService;
+import com.homework.driveman.service.IPaymentRecordService;
 import com.homework.driveman.service.IPhysicalExamService;
 import com.homework.driveman.service.IUserService;
 import com.homework.driveman.web.ServiceCode;
@@ -17,11 +22,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 增驾申请服务实现
@@ -36,6 +38,15 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
 
     @Autowired
     private IPhysicalExamService physicalExamService;
+
+    @Autowired
+    private IFeeStandardService feeStandardService;
+
+    @Autowired
+    private IPaymentRecordService paymentRecordService;
+
+    @Autowired
+    private com.homework.driveman.mapper.PaymentRecordMapper paymentRecordMapper;
 
     // ==================== 车型等级定义 ====================
 
@@ -106,6 +117,27 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
         ));
     }
 
+    // ==================== 准驾覆盖关系（原车型已覆盖目标车型时拒绝增驾） ====================
+
+    private static final java.util.Map<String, Set<String>> COVERAGE_MAP = new java.util.HashMap<>();
+    static {
+        COVERAGE_MAP.put("C1", new HashSet<>(Arrays.asList("C1", "C2")));
+        COVERAGE_MAP.put("C2", new HashSet<>(Arrays.asList("C2")));
+        COVERAGE_MAP.put("D", new HashSet<>(Arrays.asList("D", "E", "F")));
+        COVERAGE_MAP.put("E", new HashSet<>(Arrays.asList("E", "F")));
+        COVERAGE_MAP.put("F", new HashSet<>(Arrays.asList("F")));
+        // A/B 级驾驶证默认覆盖同类及以下车型
+        COVERAGE_MAP.put("A1", new HashSet<>(Arrays.asList("A1", "A3", "B1", "B2", "C1", "C2", "C5", "C6", "M", "N", "P")));
+        COVERAGE_MAP.put("A3", new HashSet<>(Arrays.asList("A3", "C1", "C2", "C5", "C6")));
+        COVERAGE_MAP.put("B1", new HashSet<>(Arrays.asList("B1", "C1", "C2", "C5", "C6", "M")));
+        COVERAGE_MAP.put("B2", new HashSet<>(Arrays.asList("B2", "C1", "C2", "C5", "C6", "M")));
+        COVERAGE_MAP.put("C5", new HashSet<>(Arrays.asList("C5")));
+        COVERAGE_MAP.put("C6", new HashSet<>(Arrays.asList("C6")));
+        COVERAGE_MAP.put("M", new HashSet<>(Arrays.asList("M")));
+        COVERAGE_MAP.put("N", new HashSet<>(Arrays.asList("N")));
+        COVERAGE_MAP.put("P", new HashSet<>(Arrays.asList("P")));
+    }
+
     /** 升级路径内部类 */
     private static class UpgradePath {
         String source;
@@ -116,7 +148,7 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
     // ==================== 业务方法 ====================
 
     @Override
-    public LicenseUpgrade apply(Integer studentId, String targetLicense, Integer upgradeType, Integer licenseFileId) {
+    public LicenseUpgrade apply(Integer studentId, String targetLicense, Integer upgradeType, Integer licenseFileId, boolean skipAgeCheck) {
         User student = userService.getById(studentId);
         if (student == null) {
             throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "学员不存在");
@@ -141,10 +173,17 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
             throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "无效的目标车型: " + targetLicense);
         }
 
-        // 目标车型与当前车型相同 → 无需增驾（两种类型通用）
+        // 目标车型与当前车型相同 → 无需增驾
         if (originalLicense.equals(targetLicense)) {
             throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
                     "您已持有 " + targetLicense + " 车型，无需增驾");
+        }
+
+        // 准驾覆盖校验：原车型已覆盖目标车型时拒绝
+        Set<String> covered = COVERAGE_MAP.get(originalLicense);
+        if (covered != null && covered.contains(targetLicense)) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                    originalLicense + " 已准驾 " + targetLicense + "，无需增驾");
         }
 
         // 校验增驾类型并执行对应校验
@@ -156,7 +195,9 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
             }
         } else if (upgradeType == 2) {
             // 升级增驾：校验年龄、车型路径，驾驶证材料由管理员审核时校验
-            validateUpgradeBasicConditions(student, originalLicense, targetLicense);
+            if (!skipAgeCheck) {
+                validateUpgradeBasicConditions(student, originalLicense, targetLicense);
+            }
             if (licenseFileId == null) {
                 throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "升级增驾需上传驾驶证材料");
             }
@@ -188,13 +229,36 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
     }
 
     @Override
-    public void audit(Integer id, Integer status, String remark) {
+    public void audit(Integer id, Integer status, String remark, String skipSubjects) {
         LicenseUpgrade upgrade = getById(id);
         if (upgrade == null) {
             throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "增驾申请不存在");
         }
         if (upgrade.getStatus() != 0) {
             throw new ServiceException(ServiceCode.ERROR_CONFLICT, "该申请已处理，无法重复审核");
+        }
+
+        // 校验跳过的科目
+        Set<Integer> skipSet = new HashSet<>();
+        if (status == 1 && skipSubjects != null && !skipSubjects.isEmpty()) {
+            for (String s : skipSubjects.split(",")) {
+                try {
+                    int subj = Integer.parseInt(s.trim());
+                    if (subj < 1 || subj > 4) {
+                        throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                                "无效的科目编号: " + subj + "，有效范围 1-4");
+                    }
+                    skipSet.add(subj);
+                } catch (NumberFormatException e) {
+                    throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                            "无效的科目编号格式: " + s);
+                }
+            }
+            // 不能跳过全部科目
+            if (skipSet.size() >= 4) {
+                throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                        "不能跳过全部科目，至少保留一科进行考试");
+            }
         }
 
         // 升级增驾（upgradeType=2）审核通过时，要求学员已完成目标车型的体检
@@ -204,51 +268,158 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
 
         upgrade.setStatus(status);
         upgrade.setRemark(remark);
+        upgrade.setSkipSubjects(skipSubjects);
+
         updateById(upgrade);
 
         if (status == 1) {
-            log.info("增驾申请审核通过，待考试: id={}, studentId={}, targetLicense={}",
-                    id, upgrade.getStudentId(), upgrade.getTargetLicense());
+            // 审核通过时，自动生成增驾费账单
+            FeeStandard pkg = feeStandardService.lambdaQuery()
+                    .eq(FeeStandard::getLicenseType, upgrade.getTargetLicense())
+                    .isNull(FeeStandard::getSubject)
+                    .orderByDesc(FeeStandard::getAmount)
+                    .last("LIMIT 1")
+                    .one();
+            if (pkg != null) {
+                paymentRecordService.autoCreate(upgrade.getStudentId(), "upgrade_fee",
+                        upgrade.getId(), pkg.getAmount(),
+                        upgrade.getTargetLicense() + " 增驾套餐 " + pkg.getDescription());
+                log.info("增驾套餐账单已生成: studentId={}, targetLicense={}, amount={}",
+                        upgrade.getStudentId(), upgrade.getTargetLicense(), pkg.getAmount());
+            } else {
+                // 没有配置套餐时，生成一个默认金额的账单（管理员可在费用标准页面配置）
+                paymentRecordService.autoCreate(upgrade.getStudentId(), "upgrade_fee",
+                        upgrade.getId(), new java.math.BigDecimal("2000.00"),
+                        upgrade.getTargetLicense() + " 增驾费（默认价格，管理端可修改）");
+                log.warn("未找到 {} 的套餐费用标准，已使用默认金额 2000 元生成账单，" +
+                        "请管理员在费用标准页面补充配置", upgrade.getTargetLicense());
+            }
+
+            String msg = skipSet.isEmpty() ? "待考试"
+                    : "跳过科目 " + skipSubjects + "，其余科目待考试";
+            log.info("增驾申请审核通过，{}: id={}, studentId={}, targetLicense={}",
+                    msg, id, upgrade.getStudentId(), upgrade.getTargetLicense());
         }
 
         log.info("增驾申请审核完成: id={}, status={}", id, status);
     }
 
     @Override
-    public void recordExamResult(Integer id, Integer examStatus, String examRemark) {
+    public Map<String, Object> getProgress(Integer id) {
+        LicenseUpgrade upgrade = getById(id);
+        if (upgrade == null) {
+            throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "增驾申请不存在");
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("upgrade", upgrade);
+
+        // 1. 查询支付状态 — 该增驾的 upgrade_fee 是否已支付
+        LambdaQueryWrapper<com.homework.driveman.entity.PaymentRecord> paidQw = Wrappers.lambdaQuery();
+        paidQw.eq(com.homework.driveman.entity.PaymentRecord::getStudentId, upgrade.getStudentId())
+              .eq(com.homework.driveman.entity.PaymentRecord::getBizType, "upgrade_fee")
+              .eq(com.homework.driveman.entity.PaymentRecord::getBizId, upgrade.getId())
+              .eq(com.homework.driveman.entity.PaymentRecord::getStatus, 1);
+        long paidCount = paymentRecordMapper.selectCount(paidQw);
+        result.put("paid", paidCount > 0);
+
+        // 2. 解析免考科目
+        Set<Integer> skippedSet = new HashSet<>();
+        if (upgrade.getSkipSubjects() != null && !upgrade.getSkipSubjects().isEmpty()) {
+            for (String s : upgrade.getSkipSubjects().split(",")) {
+                skippedSet.add(Integer.parseInt(s.trim()));
+            }
+        }
+        result.put("skippedSubjects", skippedSet);
+
+        // 3. 查询已通过的考试科目（通过 exam_registration → exam_session 关联）
+        List<Integer> passedSubjects = baseMapper.selectPassedSubjects(
+                upgrade.getStudentId(), upgrade.getTargetLicense());
+        result.put("passedSubjects", passedSubjects);
+
+        // 4. 计算待考科目
+        List<Integer> pendingSubjects = new ArrayList<>();
+        for (int i = 1; i <= 4; i++) {
+            if (!skippedSet.contains(i) && !passedSubjects.contains(i)) {
+                pendingSubjects.add(i);
+            }
+        }
+        result.put("pendingSubjects", pendingSubjects);
+        result.put("allPassed", pendingSubjects.isEmpty());
+
+        return result;
+    }
+
+    @Override
+    public void completeUpgrade(Integer id) {
         LicenseUpgrade upgrade = getById(id);
         if (upgrade == null) {
             throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "增驾申请不存在");
         }
         if (upgrade.getStatus() != 1) {
-            throw new ServiceException(ServiceCode.ERROR_CONFLICT, "该申请未通过审核，无法录入考试成绩");
+            throw new ServiceException(ServiceCode.ERROR_CONFLICT, "该申请未通过审核，无法完成增驾");
         }
-        // 已通过的不允许重复录入
         if (upgrade.getExamStatus() != null && upgrade.getExamStatus() == 1) {
-            throw new ServiceException(ServiceCode.ERROR_CONFLICT, "该申请已考试通过，无需重复录入");
+            throw new ServiceException(ServiceCode.ERROR_CONFLICT, "该增驾已完成，无需重复操作");
         }
 
-        upgrade.setExamStatus(examStatus);
-        upgrade.setExamRemark(examRemark);
-        updateById(upgrade);
+        // 1. 校验增驾费已支付
+        LambdaQueryWrapper<com.homework.driveman.entity.PaymentRecord> allQw = Wrappers.lambdaQuery();
+        allQw.eq(com.homework.driveman.entity.PaymentRecord::getStudentId, upgrade.getStudentId())
+             .eq(com.homework.driveman.entity.PaymentRecord::getBizType, "upgrade_fee")
+             .eq(com.homework.driveman.entity.PaymentRecord::getBizId, upgrade.getId());
+        long unpaidCount = paymentRecordMapper.selectCount(allQw);
 
-        if (examStatus == 1) {
-            // 考试通过：更新学员的准驾车型 + 记录新驾照获取日期
-            User student = userService.getById(upgrade.getStudentId());
-            if (student != null) {
-                student.setLicenseType(upgrade.getTargetLicense());
-                // 增驾获得新车型，更新领证日期为当前时间（用于后续可能的再次增驾持有年限计算）
-                student.setLicenseObtainedDate(LocalDateTime.now());
-                userService.updateById(student);
-                log.info("学员车型已更新: userId={}, {} -> {}, licenseObtainedDate={}",
-                        student.getUserId(), upgrade.getOriginalLicense(), upgrade.getTargetLicense(),
-                        student.getLicenseObtainedDate());
+        LambdaQueryWrapper<com.homework.driveman.entity.PaymentRecord> paidOnlyQw = Wrappers.lambdaQuery();
+        paidOnlyQw.eq(com.homework.driveman.entity.PaymentRecord::getStudentId, upgrade.getStudentId())
+                  .eq(com.homework.driveman.entity.PaymentRecord::getBizType, "upgrade_fee")
+                  .eq(com.homework.driveman.entity.PaymentRecord::getBizId, upgrade.getId())
+                  .eq(com.homework.driveman.entity.PaymentRecord::getStatus, 1);
+        long paidCount = paymentRecordMapper.selectCount(paidOnlyQw);
+        if (paidCount == 0 && unpaidCount > 0) {
+            throw new ServiceException(ServiceCode.ERROR_CONFLICT,
+                    "学员尚未支付增驾费，请先完成缴费");
+        }
+
+        // 2. 检查所有未免考科目是否已通过
+        Set<Integer> skippedSet = new HashSet<>();
+        if (upgrade.getSkipSubjects() != null && !upgrade.getSkipSubjects().isEmpty()) {
+            for (String s : upgrade.getSkipSubjects().split(",")) {
+                skippedSet.add(Integer.parseInt(s.trim()));
             }
         }
-        // 考试不通过（examStatus=2）：记录仍保留在 status=1/examStatus=2，
-        // 管理员可重新录入成绩（覆盖 examStatus），不阻止重试
 
-        log.info("增驾考试成绩录入: id={}, examStatus={}", id, examStatus);
+        List<Integer> passedSubjects = baseMapper.selectPassedSubjects(
+                upgrade.getStudentId(), upgrade.getTargetLicense());
+
+        List<Integer> pendingSubjects = new ArrayList<>();
+        for (int i = 1; i <= 4; i++) {
+            if (!skippedSet.contains(i) && !passedSubjects.contains(i)) {
+                pendingSubjects.add(i);
+            }
+        }
+
+        if (!pendingSubjects.isEmpty()) {
+            String pendingStr = pendingSubjects.stream()
+                    .map(s -> "科目" + s).collect(Collectors.joining("、"));
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                    "以下科目尚未通过考试：" + pendingStr);
+        }
+
+        // 3. 全部条件满足 — 完成增驾
+        upgrade.setExamStatus(1);
+        upgrade.setExamRemark("完成增驾");
+        updateById(upgrade);
+
+        User student = userService.getById(upgrade.getStudentId());
+        if (student != null) {
+            student.setLicenseType(upgrade.getTargetLicense());
+            student.setLicenseObtainedDate(LocalDateTime.now());
+            userService.updateById(student);
+            log.info("增驾完成，学员车型已更新: userId={}, {} -> {}, licenseObtainedDate={}",
+                    student.getUserId(), upgrade.getOriginalLicense(), upgrade.getTargetLicense(),
+                    student.getLicenseObtainedDate());
+        }
     }
 
     @Override

@@ -236,6 +236,7 @@ CREATE TABLE IF NOT EXISTS `license_upgrade` (
     `remark` VARCHAR(200) DEFAULT NULL COMMENT '审核备注',
     `exam_status` TINYINT DEFAULT 0 COMMENT '考试状态: 0-待考试, 1-考试通过, 2-考试不通过',
     `exam_remark` VARCHAR(200) DEFAULT NULL COMMENT '考试不通过原因/备注',
+    `skip_subjects` VARCHAR(10) DEFAULT NULL COMMENT '跳过的科目编号(逗号分隔,如1,3)',
     `license_file_id` INT UNSIGNED DEFAULT NULL COMMENT '驾驶证材料文件ID（学员上传的驾驶证照片/扫描件）',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
@@ -655,6 +656,18 @@ INSERT IGNORE INTO `fee_standard` (`license_type`, `subject`, `amount`, `descrip
 ('C2', NULL, 4280.00, 'C2全包套餐（含补考费）'),
 ('C1', 2, 200.00, '科目二模拟训练费'),
 ('C2', 2, 200.00, '科目二模拟训练费');
+
+-- 增驾套餐费
+INSERT IGNORE INTO `fee_standard` (`license_type`, `subject`, `amount`, `description`) VALUES
+('C6', NULL, 1500.00, 'C6增驾套餐'),
+('B1', NULL, 5000.00, 'B1增驾套餐'),
+('B2', NULL, 6000.00, 'B2增驾套餐'),
+('A1', NULL, 8000.00, 'A1增驾套餐'),
+('A2', NULL, 7000.00, 'A2增驾套餐'),
+('A3', NULL, 6000.00, 'A3增驾套餐'),
+('D', NULL, 1000.00, 'D增驾套餐'),
+('E', NULL, 800.00, 'E增驾套餐'),
+('C5', NULL, 4000.00, 'C5增驾套餐');
 
 -- 合场费（按车型+科目+用车类型定价）
 INSERT IGNORE INTO `fee_standard` (`license_type`, `subject`, `amount`, `description`) VALUES

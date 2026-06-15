@@ -23,7 +23,7 @@ public class PaymentRecordServiceImpl implements IPaymentRecordService {
 
     /** 有效业务类型集合 */
     public static final Set<String> VALID_BIZ_TYPES = Set.of(
-            "registration_fee", "exam_fee", "familiarization_fee", "training_fee", "other"
+            "registration_fee", "exam_fee", "familiarization_fee", "training_fee", "upgrade_fee", "other"
     );
 
     @Autowired
@@ -182,6 +182,7 @@ public class PaymentRecordServiceImpl implements IPaymentRecordService {
                 case "exam_fee" -> "考试费";
                 case "familiarization_fee" -> "合场费";
                 case "training_fee" -> "二次培训费";
+                case "upgrade_fee" -> "增驾费";
                 default -> bizType;
             };
             bizPieData.add(Map.of("name", label, "value", row.get("total")));

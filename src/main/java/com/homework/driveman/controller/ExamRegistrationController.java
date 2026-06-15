@@ -79,6 +79,9 @@ public class ExamRegistrationController {
     @Autowired
     private IPhysicalExamService physicalExamService;
 
+    @Autowired
+    private com.homework.driveman.mapper.LicenseUpgradeMapper licenseUpgradeMapper;
+
     /** 从 config 表读取合格分数线，默认 90 */
     private int getPassScore() {
         String val = configService.getConfigValue("exam_pass_score");
@@ -120,8 +123,17 @@ public class ExamRegistrationController {
         }
         if (session.getLicenseType() != null
                 && !session.getLicenseType().equals(student.getLicenseType())) {
-            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
-                    "该场次仅限 " + session.getLicenseType() + " 车型报名，您的车型为 " + student.getLicenseType());
+            // 例外：学员有该目标车型进行中的增驾申请时允许跨车型报名
+            Long upgradeCount = licenseUpgradeMapper.selectCount(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.homework.driveman.entity.LicenseUpgrade>()
+                            .eq(com.homework.driveman.entity.LicenseUpgrade::getStudentId, studentId)
+                            .eq(com.homework.driveman.entity.LicenseUpgrade::getTargetLicense, session.getLicenseType())
+                            .eq(com.homework.driveman.entity.LicenseUpgrade::getStatus, 1)
+                            .ne(com.homework.driveman.entity.LicenseUpgrade::getExamStatus, 1));
+            if (upgradeCount == 0) {
+                throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                        "该场次仅限 " + session.getLicenseType() + " 车型报名，您的车型为 " + student.getLicenseType());
+            }
         }
 
         // ② 校验学时是否达标
