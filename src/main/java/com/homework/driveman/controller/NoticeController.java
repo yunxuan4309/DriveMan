@@ -1,5 +1,7 @@
 package com.homework.driveman.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.Notice;
 import com.homework.driveman.service.INoticeService;
@@ -38,13 +40,16 @@ public class NoticeController {
     }
 
     @RequireRole(3)
-    @Operation(summary = "查询所有公告（含过期）", description = "管理员查看全部公告记录，按发布时间倒序")
+    @Operation(summary = "分页查询所有公告（含过期）", description = "管理员分页查看全部公告，支持标题搜索")
     @GetMapping
-    public JsonResult<List<Notice>> listAll() {
-        List<Notice> list = noticeService.lambdaQuery()
-                .orderByDesc(Notice::getPublishTime)
-                .list();
-        return JsonResult.ok(list);
+    public JsonResult<Page<Notice>> listAll(@RequestParam(defaultValue = "1") int page,
+                                             @RequestParam(defaultValue = "10") int size,
+                                             @RequestParam(required = false) String title) {
+        LambdaQueryWrapper<Notice> wrapper = new LambdaQueryWrapper<Notice>()
+                .like(title != null && !title.isEmpty(), Notice::getTitle, title)
+                .orderByDesc(Notice::getPublishTime);
+        Page<Notice> noticePage = noticeService.page(new Page<>(page, size), wrapper);
+        return JsonResult.ok(noticePage);
     }
 
     @RequireRole(3)

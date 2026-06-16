@@ -112,7 +112,7 @@ public class CoachAssignmentController {
                                                           @RequestParam(required = false) String studentName,
                                                           @RequestParam(required = false) String coachName) {
         LambdaQueryWrapper<StudentCoach> wrapper = new LambdaQueryWrapper<StudentCoach>()
-                .eq(StudentCoach::getStatus, 1);
+                .orderByDesc(StudentCoach::getBindTime);
 
         if (studentName != null && !studentName.isEmpty()) {
             List<Integer> matchedStudentIds = userMapper.selectList(
@@ -176,6 +176,7 @@ public class CoachAssignmentController {
             map.put("id", sc.getId());
             map.put("studentId", sc.getStudentId());
             map.put("coachId", sc.getCoachId());
+            map.put("status", sc.getStatus());
             map.put("bindTime", sc.getBindTime());
 
             User student = studentMap.get(sc.getStudentId());
