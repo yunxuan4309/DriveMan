@@ -59,7 +59,7 @@ public class RegistrationController {
         if (user == null) {
             throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "用户不存在");
         }
-        if (user.getRole() != 1) {
+        if (user.getRole() != 0 && user.getRole() != 1) {
             throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "只能审核学员角色");
         }
 
@@ -84,7 +84,10 @@ public class RegistrationController {
                 throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, banMsg);
             }
 
-            // 审核通过 → 更新状态 + 生成PDF
+            // 审核通过 → 更新状态（role=0 的准学员升级为正式学员）+ 生成PDF
+            if (user.getRole() == 0) {
+                user.setRole(1);
+            }
             user.setStatus(1);
             userService.updateById(user);
 
@@ -107,7 +110,7 @@ public class RegistrationController {
                     .list();
             if (!packageFees.isEmpty()) {
                 FeeStandard packageFee = packageFees.get(0);
-                paymentRecordService.autoCreate(userId, "registration_fee", userId,
+                paymentRecordService.autoCreate(userId, "enrollment_fee", userId,
                         packageFee.getAmount(),
                         user.getLicenseType() + " " + packageFee.getDescription());
             }
@@ -126,7 +129,7 @@ public class RegistrationController {
     @GetMapping("/pending")
     public JsonResult<java.util.List<User>> listPending() {
         java.util.List<User> list = userService.lambdaQuery()
-                .eq(User::getRole, 1)
+                .in(User::getRole, 0, 1)
                 .eq(User::getStatus, 0)
                 .list();
         return JsonResult.ok(list);

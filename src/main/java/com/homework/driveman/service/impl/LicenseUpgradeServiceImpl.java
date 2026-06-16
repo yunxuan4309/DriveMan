@@ -11,10 +11,12 @@ import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
 import com.homework.driveman.mapper.LicenseConfigMapper;
 import com.homework.driveman.mapper.LicenseUpgradeMapper;
+import com.homework.driveman.service.IDisabilityInfoService;
 import com.homework.driveman.service.IFeeStandardService;
 import com.homework.driveman.service.ILicenseUpgradeService;
 import com.homework.driveman.service.IPaymentRecordService;
 import com.homework.driveman.service.IPhysicalExamService;
+import com.homework.driveman.service.ISpecialPersonRecordService;
 import com.homework.driveman.service.IUserService;
 import com.homework.driveman.web.ServiceCode;
 import lombok.extern.slf4j.Slf4j;
@@ -52,6 +54,12 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
 
     @Autowired
     private LicenseConfigMapper licenseConfigMapper;
+
+    @Autowired
+    private IDisabilityInfoService disabilityInfoService;
+
+    @Autowired
+    private ISpecialPersonRecordService specialPersonRecordService;
 
     // ==================== 车型等级定义 ====================
 
@@ -300,6 +308,24 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
         // 升级增驾（upgradeType=2）审核通过时，要求学员已完成目标车型的体检
         if (status == 1 && upgrade.getUpgradeType() == 2) {
             physicalExamService.checkPassedForLicense(upgrade.getStudentId(), upgrade.getTargetLicense());
+        }
+
+        // C5 目标车型审核通过时，校验残疾信息已通过 + 不在禁驾期
+        if (status == 1 && "C5".equals(upgrade.getTargetLicense())) {
+            if (!disabilityInfoService.isAuditPassed(upgrade.getStudentId())) {
+                throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                        "目标车型为 C5，但该学员未通过残疾信息审核，请先审核其残疾信息");
+            }
+            if (specialPersonRecordService.isInBanPeriod(upgrade.getStudentId())) {
+                LocalDate banEnd = specialPersonRecordService.getBanEndDate(upgrade.getStudentId());
+                String banMsg;
+                if (banEnd != null && banEnd.equals(LocalDate.MAX)) {
+                    banMsg = "该学员处于终生禁驾期，无法完成增驾";
+                } else {
+                    banMsg = "该学员处于禁驾期（截止至 " + banEnd + "），无法完成增驾";
+                }
+                throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, banMsg);
+            }
         }
 
         upgrade.setStatus(status);

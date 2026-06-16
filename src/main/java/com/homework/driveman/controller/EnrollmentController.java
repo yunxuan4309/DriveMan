@@ -34,6 +34,9 @@ import java.util.Map;
 @RequestMapping("/enrollments")
 public class EnrollmentController {
 
+    /** 需要管理员审核的车型（首次报名时不能直接支付，需审核通过后才生成账单） */
+    private static final java.util.Set<String> AUDIT_REQUIRED_TYPES = java.util.Set.of("C5");
+
     @Autowired
     private IFeeStandardService feeStandardService;
 
@@ -105,7 +108,27 @@ public class EnrollmentController {
         user.setLicenseType(licenseType);
         userService.updateById(user);
 
-        // 创建待支付账单
+        // 需要审核的车型（如C5）→ 不生成账单，进入待审核状态
+        if (AUDIT_REQUIRED_TYPES.contains(licenseType)) {
+            // 防重复提交：已在审核中则直接返回
+            if (user.getStatus() == 0) {
+                Map<String, Object> result = new LinkedHashMap<>();
+                result.put("needAudit", true);
+                result.put("message", "您的报名申请正在审核中，请耐心等待");
+                result.put("licenseType", licenseType);
+                return JsonResult.ok(result);
+            }
+            user.setStatus(0); // 待审核
+            userService.updateById(user);
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("needAudit", true);
+            result.put("message", licenseType + " 车型需要管理员审核，请等待审核结果");
+            result.put("licenseType", licenseType);
+            return JsonResult.ok(result);
+        }
+
+        // 普通车型 → 直接创建待支付账单
         BigDecimal amount = pkg.getAmount() != null ? pkg.getAmount() : BigDecimal.ZERO;
         PaymentRecord payment = paymentRecordService.autoCreate(
                 studentId, "enrollment_fee", studentId, amount,
@@ -119,7 +142,7 @@ public class EnrollmentController {
         return JsonResult.ok(result);
     }
 
-    @RequireRole(0)
+    @RequireRole({0, 1})
     @Operation(summary = "支付报名套餐",
             description = "模拟支付，支付成功后自动升级为准学员为正式学员(role=1)，并生成报名表和准考证PDF")
     @Transactional

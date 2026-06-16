@@ -572,8 +572,10 @@ mvn spring-boot:run
 - [ ] ProgressServiceImpl 按 examMode 区分小汽车（4 科）与特种车辆（2 科）的结业规则
 
 **P3 — 已知业务逻辑缺陷**
-- [ ] **学员预约历史不显示科目信息**：`GET /appointments/my` 返回的预约记录未关联 `coach_schedule` 表，学员无法看到已预约课程是科目二还是科目三。修复方向：(a) AppointmentMapper SQL 左连接 coach_schedule 表带出 subject 字段，或 (b) appointment 表增加冗余 subject 列
-- [ ] **缺少科目前置校验**：`POST /appointments` 创建预约时未检查学员是否已通过前置科目（如预约科目二排班但科目一未通过）。修复方向：在 AppointmentController.create() 中根据 schedule.subject 值调用 ProgressServiceImpl 判断前置科目状态，未通过则拦截
+- [x] **学员预约历史不显示科目信息**：已修复 — AppointmentController 的 enrichAppointmentPage 已补充排班科目查询
+- [x] **缺少科目前置校验**：已修复 — AppointmentController.create() 增加了 schedule.subject 前置科目校验
+- [x] **C5 增驾缺少残疾/禁驾校验**：LicenseUpgradeServiceImpl.audit() 增加了 C5 目标车型的残疾信息和禁驾期检查
+- [x] **C5 首次报名绕过审核**：EnrollmentController.apply() 分流，C5 走 RegistrationController 审核流程
 
 ### 评估：缺失功能可实现性
 

@@ -1,5 +1,6 @@
 package com.homework.driveman.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.SpecialPersonRecord;
 import com.homework.driveman.exception.ServiceException;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 特殊人群记录控制器 — 学员主动申报犯罪、酒驾等记录，管理员审核
@@ -86,6 +88,18 @@ public class SpecialPersonRecordController {
     }
 
     // ==================== 管理员端接口 ====================
+
+    @RequireRole(3)
+    @Operation(summary = "分页查询特殊人群记录", description = "支持按审核状态、记录类型、学员姓名搜索，含学员姓名")
+    @GetMapping("/page")
+    public JsonResult<Page<Map<String, Object>>> page(@RequestParam(defaultValue = "1") int page,
+                                                       @RequestParam(defaultValue = "10") int size,
+                                                       @RequestParam(required = false) Integer auditStatus,
+                                                       @RequestParam(required = false) Integer recordType,
+                                                       @RequestParam(required = false) String keyword) {
+        return JsonResult.ok(specialPersonRecordService.pageWithDetails(
+                new Page<>(page, size), auditStatus, recordType, keyword));
+    }
 
     @RequireRole(3)
     @Operation(summary = "查询所有待审核记录", description = "管理员查看所有待审核的特殊人群记录")

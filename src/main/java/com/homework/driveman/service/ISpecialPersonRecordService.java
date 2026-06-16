@@ -1,10 +1,12 @@
 package com.homework.driveman.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.homework.driveman.entity.SpecialPersonRecord;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 特殊人群记录服务接口
@@ -43,4 +45,10 @@ public interface ISpecialPersonRecordService extends IService<SpecialPersonRecor
      * @return null-无限制，LocalDate.MAX-终生禁驾，其他-具体截止日期
      */
     LocalDate getBanEndDate(Integer userId);
+
+    /**
+     * 分页查询特殊人群记录（含学员姓名）
+     */
+    Page<Map<String, Object>> pageWithDetails(Page<SpecialPersonRecord> page, Integer auditStatus,
+                                               Integer recordType, String keyword);
 }

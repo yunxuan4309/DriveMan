@@ -1,5 +1,6 @@
 package com.homework.driveman.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.DisabilityInfo;
 import com.homework.driveman.exception.ServiceException;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 残疾人信息控制器 — C5报名残疾信息管理（简化版）
@@ -82,6 +84,16 @@ public class DisabilityInfoController {
                 .orderByDesc(DisabilityInfo::getCreateTime)
                 .list();
         return JsonResult.ok(list);
+    }
+
+    @RequireRole(3)
+    @Operation(summary = "分页查询残疾信息", description = "支持按审核状态和学员姓名搜索，含学员姓名")
+    @GetMapping("/page")
+    public JsonResult<Page<Map<String, Object>>> page(@RequestParam(defaultValue = "1") int page,
+                                                       @RequestParam(defaultValue = "10") int size,
+                                                       @RequestParam(required = false) Integer auditStatus,
+                                                       @RequestParam(required = false) String keyword) {
+        return JsonResult.ok(disabilityInfoService.pageWithDetails(new Page<>(page, size), auditStatus, keyword));
     }
 
     @RequireRole(3)

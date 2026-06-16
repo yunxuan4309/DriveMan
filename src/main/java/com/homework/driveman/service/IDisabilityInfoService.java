@@ -1,9 +1,11 @@
 package com.homework.driveman.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.homework.driveman.entity.DisabilityInfo;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 残疾人信息服务接口（简化版）
@@ -35,4 +37,9 @@ public interface IDisabilityInfoService extends IService<DisabilityInfo> {
      * 查询用户是否已通过残疾信息审核
      */
     boolean isAuditPassed(Integer userId);
+
+    /**
+     * 分页查询残疾信息（含学员姓名）
+     */
+    Page<Map<String, Object>> pageWithDetails(Page<DisabilityInfo> page, Integer auditStatus, String keyword);
 }

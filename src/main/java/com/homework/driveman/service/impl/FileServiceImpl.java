@@ -43,7 +43,7 @@ public class FileServiceImpl extends ServiceImpl<FileMapper, File> implements IF
             "id_card_front", "id_card_back", "physical_exam",
             "registration_pdf", "admission_ticket",
             "training_record", "coach_qualification", "exam_score",
-            "existing_license"
+            "existing_license", "disability_cert", "court_doc"
     );
 
     /** 各类文件允许的后缀（小写，不含点） */
@@ -55,7 +55,9 @@ public class FileServiceImpl extends ServiceImpl<FileMapper, File> implements IF
             "admission_ticket",    Set.of("pdf"),
             "training_record",     Set.of("pdf"),
             "coach_qualification", Set.of("jpg", "jpeg", "png", "bmp", "webp", "pdf"),
-            "exam_score",          Set.of("jpg", "jpeg", "png", "bmp", "webp", "pdf")
+            "exam_score",          Set.of("jpg", "jpeg", "png", "bmp", "webp", "pdf"),
+            "disability_cert",     Set.of("jpg", "jpeg", "png", "bmp", "webp", "pdf"),
+            "court_doc",           Set.of("jpg", "jpeg", "png", "bmp", "webp", "pdf")
     );
 
     @Value("${drive.upload.path:./upload-files}")

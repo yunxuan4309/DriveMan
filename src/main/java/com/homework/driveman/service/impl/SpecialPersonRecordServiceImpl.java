@@ -1,18 +1,23 @@
 package com.homework.driveman.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.homework.driveman.entity.SpecialPersonRecord;
+import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
 import com.homework.driveman.mapper.SpecialPersonRecordMapper;
+import com.homework.driveman.mapper.UserMapper;
 import com.homework.driveman.service.ISpecialPersonRecordService;
 import com.homework.driveman.web.ServiceCode;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 特殊人群记录服务实现
@@ -20,6 +25,9 @@ import java.util.List;
 @Slf4j
 @Service
 public class SpecialPersonRecordServiceImpl extends ServiceImpl<SpecialPersonRecordMapper, SpecialPersonRecord> implements ISpecialPersonRecordService {
+
+    @Autowired
+    private UserMapper userMapper;
 
     @Override
     public SpecialPersonRecord submit(Integer userId, Integer recordType, LocalDate recordDate,
@@ -137,5 +145,66 @@ public class SpecialPersonRecordServiceImpl extends ServiceImpl<SpecialPersonRec
                 .map(SpecialPersonRecord::getBanEndDate)
                 .max(Comparator.naturalOrder())
                 .orElse(null);
+    }
+
+    @Override
+    public Page<Map<String, Object>> pageWithDetails(Page<SpecialPersonRecord> page, Integer auditStatus,
+                                                      Integer recordType, String keyword) {
+        LambdaQueryWrapper<SpecialPersonRecord> wrapper = new LambdaQueryWrapper<SpecialPersonRecord>()
+                .eq(auditStatus != null, SpecialPersonRecord::getAuditStatus, auditStatus)
+                .eq(recordType != null, SpecialPersonRecord::getRecordType, recordType)
+                .orderByDesc(SpecialPersonRecord::getCreateTime);
+
+        // 按学员姓名搜索
+        if (keyword != null && !keyword.isEmpty()) {
+            List<Integer> matchedUserIds = userMapper.selectList(
+                    new LambdaQueryWrapper<User>()
+                            .like(User::getRealName, keyword)
+                            .select(User::getUserId)
+            ).stream().map(User::getUserId).collect(Collectors.toList());
+            if (matchedUserIds.isEmpty()) {
+                Page<Map<String, Object>> empty = new Page<>(page.getCurrent(), page.getSize(), 0);
+                empty.setRecords(Collections.emptyList());
+                return empty;
+            }
+            wrapper.in(SpecialPersonRecord::getUserId, matchedUserIds);
+        }
+
+        Page<SpecialPersonRecord> rawPage = baseMapper.selectPage(page, wrapper);
+        List<SpecialPersonRecord> records = rawPage.getRecords();
+        if (records.isEmpty()) {
+            Page<Map<String, Object>> empty = new Page<>(rawPage.getCurrent(), rawPage.getSize(), rawPage.getTotal());
+            empty.setRecords(Collections.emptyList());
+            return empty;
+        }
+
+        // 批量加载学员姓名
+        Set<Integer> userIds = records.stream().map(SpecialPersonRecord::getUserId).collect(Collectors.toSet());
+        Map<Integer, User> userMap = userMapper.selectBatchIds(userIds).stream()
+                .collect(Collectors.toMap(User::getUserId, u -> u, (a, b) -> a));
+
+        List<Map<String, Object>> enriched = records.stream().map(r -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", r.getId());
+            m.put("userId", r.getUserId());
+            User u = userMap.get(r.getUserId());
+            m.put("studentName", u != null ? u.getRealName() : null);
+            m.put("studentPhone", u != null ? u.getPhone() : null);
+            m.put("recordType", r.getRecordType());
+            m.put("recordDate", r.getRecordDate());
+            m.put("banYears", r.getBanYears());
+            m.put("banEndDate", r.getBanEndDate());
+            m.put("courtDocNo", r.getCourtDocNo());
+            m.put("courtDocFileId", r.getCourtDocFileId());
+            m.put("auditStatus", r.getAuditStatus());
+            m.put("auditRemark", r.getAuditRemark());
+            m.put("auditTime", r.getAuditTime());
+            m.put("createTime", r.getCreateTime());
+            return m;
+        }).collect(Collectors.toList());
+
+        Page<Map<String, Object>> result = new Page<>(rawPage.getCurrent(), rawPage.getSize(), rawPage.getTotal());
+        result.setRecords(enriched);
+        return result;
     }
 }

@@ -1,16 +1,22 @@
 package com.homework.driveman.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.homework.driveman.entity.DisabilityInfo;
+import com.homework.driveman.entity.User;
 import com.homework.driveman.exception.ServiceException;
 import com.homework.driveman.mapper.DisabilityInfoMapper;
+import com.homework.driveman.mapper.UserMapper;
 import com.homework.driveman.service.IDisabilityInfoService;
 import com.homework.driveman.web.ServiceCode;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 残疾人信息服务实现（简化版）
@@ -18,6 +24,9 @@ import java.util.List;
 @Slf4j
 @Service
 public class DisabilityInfoServiceImpl extends ServiceImpl<DisabilityInfoMapper, DisabilityInfo> implements IDisabilityInfoService {
+
+    @Autowired
+    private UserMapper userMapper;
 
     @Override
     public DisabilityInfo submit(Integer userId, Integer disabilityType, String certificateNo,
@@ -91,5 +100,61 @@ public class DisabilityInfoServiceImpl extends ServiceImpl<DisabilityInfoMapper,
     public boolean isAuditPassed(Integer userId) {
         DisabilityInfo info = getByUserId(userId);
         return info != null && info.getAuditStatus() != null && info.getAuditStatus() == 1;
+    }
+
+    @Override
+    public Page<Map<String, Object>> pageWithDetails(Page<DisabilityInfo> page, Integer auditStatus, String keyword) {
+        LambdaQueryWrapper<DisabilityInfo> wrapper = new LambdaQueryWrapper<DisabilityInfo>()
+                .eq(auditStatus != null, DisabilityInfo::getAuditStatus, auditStatus)
+                .orderByDesc(DisabilityInfo::getCreateTime);
+
+        // 按学员姓名搜索
+        if (keyword != null && !keyword.isEmpty()) {
+            List<Integer> matchedUserIds = userMapper.selectList(
+                    new LambdaQueryWrapper<User>()
+                            .like(User::getRealName, keyword)
+                            .select(User::getUserId)
+            ).stream().map(User::getUserId).collect(Collectors.toList());
+            if (matchedUserIds.isEmpty()) {
+                Page<Map<String, Object>> empty = new Page<>(page.getCurrent(), page.getSize(), 0);
+                empty.setRecords(Collections.emptyList());
+                return empty;
+            }
+            wrapper.in(DisabilityInfo::getUserId, matchedUserIds);
+        }
+
+        Page<DisabilityInfo> rawPage = baseMapper.selectPage(page, wrapper);
+        List<DisabilityInfo> records = rawPage.getRecords();
+        if (records.isEmpty()) {
+            Page<Map<String, Object>> empty = new Page<>(rawPage.getCurrent(), rawPage.getSize(), rawPage.getTotal());
+            empty.setRecords(Collections.emptyList());
+            return empty;
+        }
+
+        // 批量加载学员姓名
+        Set<Integer> userIds = records.stream().map(DisabilityInfo::getUserId).collect(Collectors.toSet());
+        Map<Integer, User> userMap = userMapper.selectBatchIds(userIds).stream()
+                .collect(Collectors.toMap(User::getUserId, u -> u, (a, b) -> a));
+
+        List<Map<String, Object>> enriched = records.stream().map(r -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", r.getId());
+            m.put("userId", r.getUserId());
+            User u = userMap.get(r.getUserId());
+            m.put("studentName", u != null ? u.getRealName() : null);
+            m.put("studentPhone", u != null ? u.getPhone() : null);
+            m.put("disabilityType", r.getDisabilityType());
+            m.put("certificateNo", r.getCertificateNo());
+            m.put("certificateFileId", r.getCertificateFileId());
+            m.put("auditStatus", r.getAuditStatus());
+            m.put("auditRemark", r.getAuditRemark());
+            m.put("auditTime", r.getAuditTime());
+            m.put("createTime", r.getCreateTime());
+            return m;
+        }).collect(Collectors.toList());
+
+        Page<Map<String, Object>> result = new Page<>(rawPage.getCurrent(), rawPage.getSize(), rawPage.getTotal());
+        result.setRecords(enriched);
+        return result;
     }
 }
