@@ -28,7 +28,7 @@ DriveMan/
 │   ├── init_script.sql              # 【入口】一键全量建库（合并 full/ 下三个文件）
 │   ├── full/                        # 完整建库（按编号顺序执行）
 │   │   ├── 00_create_database.sql   #   创建数据库
-│   │   ├── 01_schema.sql            #   全部 23 张表的建表语句
+│   │   ├── 01_schema.sql            #   全部表的建表语句
 │   │   └── 02_init_data.sql         #   初始化基础数据
 │   ├── upgrade/                     # 增量升级（按需执行，不丢数据）
 │   │   ├── add_constraints.sql      #   外键约束（建议开发后期启用）
@@ -45,9 +45,22 @@ DriveMan/
 │   │   ├── upgrade_venue_unified.sql   # 场地统一管理（exam_venue → venue）
 │   │   ├── upgrade_schedule_vehicle.sql # 排班管理 + 教练车车辆管理
 │   │   ├── upgrade_disability_special.sql # 残疾信息 + 特殊人群记录表
-│   │   └── upgrade_familiarization_fee.sql # 补充合场费用标准
+│   │   ├── upgrade_familiarization_fee.sql # 补充合场费用标准
+│   │   ├── upgrade_file_request.sql       # 文件请求表
+│   │   ├── upgrade_file_biztype.sql       # 文件 bitype 补充
+│   │   ├── upgrade_venue_subjects.sql     # 场地培训科目关联
+│   │   ├── upgrade_exam_deadline_config.sql # 考试截止时间配置
+│   │   ├── upgrade_exam_registration_file_id.sql # 考试报名文件ID
+│   │   ├── upgrade_existing_license.sql   # 已有驾照信息字段
+│   │   ├── upgrade_license_config_all.sql # 驾照配置全量更新
+│   │   ├── upgrade_license_file_ids.sql   # 驾照文件ID关联
+│   │   ├── upgrade_license_obtained_date.sql # 驾照获取日期
+│   │   ├── upgrade_license_upgrade_skip_subjects.sql # 增驾免考科目
+│   │   ├── upgrade_physical_exam_license_type.sql # 体检驾照类型
+│   │   └── upgrade_upgrade_fee.sql        # 增驾费用
 │   └── test/
-│       └── test_data.sql            # 测试数据补充
+│       ├── test_data.sql            # 测试数据补充
+│       └── mass_test_data.sql       # 批量测试数据
 │
 ├── src/main/java/com/homework/driveman/
 │   ├── DriveManApplication.java              # Spring Boot 启动入口
@@ -75,26 +88,32 @@ DriveMan/
 │   │   ├── TimeSlotDTO.java                 #   时间段 DTO
 │   │   └── UpdateTimeSlotsDTO.java          #   批量更新时间段 DTO
 │   │
-│   ├── vo/                                   # 视图对象
+│   ├── vo/                                   # 视图对象（4 个）
 │   │   ├── CoachRatingVO.java               #   教练评分 VO
 │   │   ├── CoachWorkloadVO.java             #   教练工作量 VO
-│   │   └── StudentInfoVO.java               #   学员信息 VO
+│   │   ├── StudentInfoVO.java               #   学员信息 VO
+│   │   └── StudentListVO.java               #   学员列表 VO
 │   │
-│   ├── controller/                           # REST 控制器（31 个，30 个活跃，1 个已禁用）
+│   ├── controller/                           # REST 控制器（37 个，36 个活跃，1 个已禁用）
 │   │   ├── LoginController.java              #   认证登录
 │   │   ├── UserController.java               #   用户管理
 │   │   ├── CoachController.java              #   教练管理
 │   │   ├── CoachRegisterController.java      #   教练自助注册
 │   │   ├── StudentController.java            #   学员管理（独立拆分）
+│   │   ├── ProfileController.java            #   个人信息管理
+│   │   ├── EnrollmentController.java         #   报名管理
 │   │   ├── CoachPortalController.java        #   教练端门户（23 个端点）
 │   │   ├── CoachPortalController1.java       #   [已禁用] 旧版，功能已合并
 │   │   ├── AppointmentController.java        #   约课管理
 │   │   ├── RegistrationController.java       #   报名审核（含 PDF 生成）
-│   │   ├── FileController.java               #   文件上传下载
+│   │   ├── ExamVenueController.java          #   考场管理
 │   │   ├── ExamSessionController.java        #   考试场次管理
 │   │   ├── ExamRegistrationController.java   #   考试报名管理
 │   │   ├── CoachApplicationController.java   #   教练申请审核
 │   │   ├── CoachAssignmentController.java    #   教练分配
+│   │   ├── FileController.java               #   文件上传下载
+│   │   ├── FileRequestController.java        #   文件请求管理
+│   │   ├── ConfigController.java             #   系统配置管理
 │   │   ├── FeeStandardController.java        #   费用标准管理
 │   │   ├── LicenseConfigController.java      #   驾照车型配置
 │   │   ├── NoticeController.java             #   通知公告管理
@@ -111,9 +130,10 @@ DriveMan/
 │   │   ├── VehicleController.java            #   车辆管理
 │   │   ├── DisabilityInfoController.java     #   残疾信息管理
 │   │   ├── SpecialPersonRecordController.java #   特殊人群记录管理
-│   │   └── SpecialExamController.java        #   特种车辆考试记录
+│   │   ├── SpecialExamController.java        #   特种车辆考试管理
+│   │   └── SpecialExamRecordController.java  #   特种车辆考试记录
 │   │
-│   ├── entity/                               # 数据实体（24 个）
+│   ├── entity/                               # 数据实体（26 个）
 │   │   ├── User.java                         #   用户表
 │   │   ├── Coach.java                        #   教练扩展表
 │   │   ├── StudentCoach.java                 #   学员-教练关联表
@@ -126,6 +146,7 @@ DriveMan/
 │   │   ├── LicenseConfig.java                #   驾照类型配置表
 │   │   ├── Notice.java                       #   通知公告表
 │   │   ├── File.java                         #   文件表
+│   │   ├── FileRequest.java                  #   文件请求表
 │   │   ├── Venue.java                        #   场地统一管理表
 │   │   ├── SpecialExamRecord.java            #   特种车考试记录表
 │   │   ├── CoachVehicleApplication.java      #   教练准教车型变更申请表
@@ -136,10 +157,11 @@ DriveMan/
 │   │   ├── LicenseUpgrade.java               #   增驾申请表
 │   │   ├── CoachSchedule.java                #   教练排班表
 │   │   ├── Vehicle.java                      #   教练车表
+│   │   ├── Config.java                       #   系统配置表
 │   │   ├── DisabilityInfo.java               #   残疾信息表
 │   │   └── SpecialPersonRecord.java          #   特殊人群记录表
 │   │
-│   ├── mapper/                               # Mapper 接口（25 个，均继承 BaseMapper）
+│   ├── mapper/                               # Mapper 接口（26 个，均继承 BaseMapper）
 │   │   ├── UserMapper.java
 │   │   ├── CoachMapper.java
 │   │   ├── StudentCoachMapper.java
@@ -152,6 +174,7 @@ DriveMan/
 │   │   ├── LicenseConfigMapper.java
 │   │   ├── NoticeMapper.java
 │   │   ├── FileMapper.java
+│   │   ├── FileRequestMapper.java
 │   │   ├── VenueMapper.java
 │   │   ├── SpecialExamRecordMapper.java
 │   │   ├── ConfigMapper.java
@@ -166,15 +189,18 @@ DriveMan/
 │   │   ├── DisabilityInfoMapper.java
 │   │   └── SpecialPersonRecordMapper.java
 │   │
-│   ├── service/                           # 业务层（27 个接口 + 27 个实现）
+│   ├── service/                           # 业务层（29 个接口 + 29 个实现）
 │   │   ├── IAppointmentService.java
 │   │   ├── ICoachService.java
 │   │   ├── ICoachPortalService.java       #   教练端门户
 │   │   ├── ICoachScheduleService.java     #   排班管理
+│   │   ├── ICoachApplicationService.java  #   教练申请
+│   │   ├── IConfigService.java            #   系统配置
 │   │   ├── IExamRegistrationService.java
 │   │   ├── IExamSessionService.java
 │   │   ├── IFeeStandardService.java       #   费用标准
 │   │   ├── IFileService.java
+│   │   ├── IFileRequestService.java       #   文件请求
 │   │   ├── ILicenseConfigService.java     #   驾照配置
 │   │   ├── INoticeService.java            #   通知公告
 │   │   ├── IPdfService.java
@@ -192,17 +218,20 @@ DriveMan/
 │   │   ├── ILicenseUpgradeService.java            #   增驾申请
 │   │   ├── ICoachVehicleApplicationService.java  #   教练准教车型变更
 │   │   ├── IDisabilityInfoService.java            #   残疾信息管理
-│   │   ├── ISpecialPersonRecordService.java       #   特殊人群记录
+│   │   └── ISpecialPersonRecordService.java       #   特殊人群记录
 │   │   │
 │   │   └── impl/
 │   │       ├── AppointmentServiceImpl.java
 │   │       ├── CoachPortalServiceImpl.java
 │   │       ├── CoachScheduleServiceImpl.java #   排班冲突检测/场地容量校验
 │   │       ├── CoachServiceImpl.java       #   教练推荐（FIND_IN_SET）
+│   │       ├── CoachApplicationServiceImpl.java # 教练申请处理
+│   │       ├── ConfigServiceImpl.java      #   系统配置管理
 │   │       ├── ExamRegistrationServiceImpl.java
 │   │       ├── ExamSessionServiceImpl.java
 │   │       ├── FeeStandardServiceImpl.java
 │   │       ├── FileServiceImpl.java        #   文件存储（本地磁盘）
+│   │       ├── FileRequestServiceImpl.java #   文件请求处理
 │   │       ├── LicenseConfigServiceImpl.java
 │   │       ├── NoticeServiceImpl.java
 │   │       ├── PdfServiceImpl.java         #   PDF 生成（iText 7）
@@ -218,12 +247,19 @@ DriveMan/
 │   │       ├── PhysicalExamServiceImpl.java        #   体检申请
 │   │       ├── LicenseUpgradeServiceImpl.java      #   增驾申请
 │   │       ├── DisabilityInfoServiceImpl.java      #   残疾信息审核
+│   │       ├── SpecialExamRecordServiceImpl.java   #   特种车辆考试记录
 │   │       ├── SpecialPersonRecordServiceImpl.java #   特殊人群禁驾期计算
 │   │       └── UserServiceImpl.java
 │   │
 │   ├── utils/
 │   │   ├── JwtUtils.java                   #   JWT 签发/解析
 │   │   └── CurrentUser.java                #   当前用户上下文 DTO
+│   │
+│   ├── util/                                # 工具类
+│   │   └── ExcelExportUtil.java             #   Excel 导出工具
+│   │
+│   ├── task/                                # 定时任务
+│   │   └── VehicleStatusSyncTask.java       #   车辆状态同步任务
 │   │
 │   ├── exception/
 │   │   ├── ServiceException.java           #   业务异常
@@ -236,7 +272,6 @@ DriveMan/
 ├── src/main/resources/
 │   └── application.yaml                    # 应用配置
 │
-├── ...接口文档.md                          # 接口对接文档（拆分模块化）
 ├── README.md
 └── HELP.md
 ```
@@ -304,6 +339,7 @@ DriveMan/
 ### 12. 文件管理
 - 本地磁盘存储，按类型分子目录（id_card_front, id_card_back, physical_exam 等）
 - 文件上传（5MB 限制）、下载、静态资源访问（`/uploads/**`）
+- 文件请求管理（学员提交材料清单 → 管理员审核）
 
 ### 13. 支付管理
 - 报名/考试报名审核通过时自动生成待支付账单
@@ -317,27 +353,28 @@ DriveMan/
 - 管理员安排时间、标记完成、取消合场
 - 两种用车模式分别定价
 
-### 15. 排班管理（新增）
-- 教练提交排班申请（选择车辆、训练场地、时间、车型）
+### 15. 排班管理
+- 教练提交排班申请（选择车辆、训练场地、时间、车型、培训科目）
 - 管理员审核（通过/拒绝）
 - 冲突检测：同一车辆/同一教练在同一时间段不能有两个已通过排班
 - 场地容量校验：不超过场地 `max_vehicles` 上限
 - 学员端：查看绑定教练的可用排班，按排班预约课程
-- 数据表：`coach_schedule` + `vehicle` + `venue` 扩展字段
+- 数据表：`coach_schedule`（含 subject 字段区分科目二/科目三）+ `vehicle` + `venue` 扩展字段
 
-### 16. 车辆管理（新增）
+### 16. 车辆管理
 - 教练车车队管理（车牌唯一、车型、品牌、座位数）
 - 状态管理：空闲/使用中/维修/报废
 - 仅管理员可 CRUD，教练可查询可用车辆
 - 初始数据：6 辆教练车（含 C1/C2/N1/N2 四种类型）
+- 车辆状态定时同步任务（`VehicleStatusSyncTask`）
 
-### 17. 残疾信息管理（新增）
+### 17. 残疾信息管理
 - C5 准驾车型支持：学员提交残疾信息及残疾人证扫描件
 - 管理员审核（通过/不通过）
 - 每人仅能有一条记录（防重复提交）
 - 残疾类型：右下肢/双下肢/右手/听力/左手/其他
 
-### 18. 特殊人群记录（新增）
+### 18. 特殊人群记录
 - 记录学员的犯罪、酒驾、毒驾、肇事逃逸等 6 类记录
 - 禁驾期自动计算（固定年限/终生禁驾）
 - 学员端查询本人的禁令状态
@@ -350,6 +387,10 @@ DriveMan/
 - 个人资料编辑（白名单字段：姓名/电话/地址/头像/执教年限）
 - 密码修改（BCrypt 验证旧密码）
 
+### 20. 系统配置管理
+- 系统配置项 CRUD（`ConfigController` + `ConfigServiceImpl`）
+- 配置项动态管理，替代直连数据库修改
+
 ## API 概览
 
 | 模块 | 基础路径 | 角色权限 |
@@ -358,12 +399,15 @@ DriveMan/
 | 教练注册 | `/coach/register` | 公开 |
 | 用户 | `/users` | 全部（登录） |
 | 学员 | `/students` | 管理员 |
+| 个人信息 | `/profile` | 全部（登录） |
+| 报名 | `/enrollments` | 学员 |
 | 教练 | `/coaches` | 全部（登录） |
 | 教练端 | `/coach-portal` | 教练 |
 | 约课 | `/appointments` | 学员/管理员 |
 | 排班 | `/schedules` | 学员/管理员 |
 | 报名审核 | `/registrations` | 管理员 |
 | 考试场次 | `/exam-sessions` | 全部（登录） |
+| 考场 | `/exam-venues` | 管理员 |
 | 考试报名 | `/exam-registrations` | 学员/管理员 |
 | 教练端-考试报名 | `/coach-portal/exam-registrations` | 教练 |
 | 场地管理 | `/venues` | 管理员 |
@@ -374,12 +418,14 @@ DriveMan/
 | 教练端-移交学员 | `/coach-portal/student-transfers` | 教练 |
 | 费用标准 | `/fee-standards` | 管理员 |
 | 车型配置 | `/license-configs` | 管理员 |
+| 系统配置 | `/config` | 管理员 |
 | 通知公告 | `/notices` | 全部（登录） |
 | 学习进度 | `/progress` | 全部（登录） |
 | 统计报表 | `/statistics` | 管理员 |
 | 支付管理 | `/payment-records` | 学员/管理员 |
 | 合场管理 | `/familiarizations` | 学员/管理员 |
 | 文件 | `/files` | 全部（登录），删除限管理员 |
+| 文件请求 | `/file-requests` | 学员/管理员 |
 | 特种车辆考试 | `/special-exam-records` | 管理员 |
 | 教练准教车型变更 | `/coach-portal/vehicle-applications` | 教练 |
 | 教练准教车型变更审核 | `/coach-vehicle-applications` | 管理员 |
@@ -423,8 +469,10 @@ mysql -u root -proot driveman < database/full/02_init_data.sql
 mysql -u root -proot driveman < database/upgrade/upgrade_schedule_vehicle.sql
 mysql -u root -proot driveman < database/upgrade/upgrade_venue_unified.sql
 mysql -u root -proot driveman < database/upgrade/upgrade_basic_data.sql
-# 方式三也可升级脚本逐个执行，以下为最新表补充：
 mysql -u root -proot driveman < database/upgrade/upgrade_disability_special.sql
+mysql -u root -proot driveman < database/upgrade/upgrade_venue_subjects.sql
+mysql -u root -proot driveman < database/upgrade/upgrade_file_request.sql
+# 按需执行其他 upgrade/ 下的脚本
 
 # 2. 确保 MySQL 和 Redis 已启动
 
@@ -449,8 +497,8 @@ mvn spring-boot:run
 
 ### 已完成
 - [x] Spring Boot + MyBatis-Plus 框架搭建
-- [x] 23 张数据库表结构设计 + 初始化数据 + 测试数据（init_script.sql）
-- [x] 15 份增量升级脚本（upgrade/ 目录）
+- [x] 数据库表结构设计 + 初始化数据 + 测试数据（init_script.sql）
+- [x] 27 份增量升级脚本（upgrade/ 目录）
 - [x] 三层架构（Controller/Service/Mapper）代码生成
 - [x] JWT 登录认证 + Token 校验拦截器
 - [x] `@RequireRole` 角色权限注解（已应用到 26 个 Controller 共 138 处敏感接口）
@@ -464,6 +512,7 @@ mvn spring-boot:run
 - [x] 文件系统重构：`biz_type` + `biz_id` 业务关联、`file_size` + `mime_type` 元数据、三端权限矩阵
 - [x] 培训记录表 PDF 生成（学员点击生成，含学时汇总、教练信息）
 - [x] 文件查询多维度过滤（`bizType`、`fileType`、`keyword` 文件名搜索）
+- [x] 文件请求管理（学员提交材料清单 → 管理员审核）
 - [x] 考试场次 CRUD + 名额管理 + 考试报名审核 + 成绩录入 + 补考
 - [x] 教练端门户（查看学员、录入学时、确认约课、时间段管理、工作量统计、评分查看）
 - [x] 费用标准管理（CRUD + 按车型查询）
@@ -502,7 +551,10 @@ mvn spring-boot:run
 - [x] 教练端个人资料编辑 + 密码修改
 - [x] 教练端结构化时间段管理（TimeSlotDTO CRUD，替代原始 JSON）
 - [x] 车辆管理（vehicle 表 → 实体 → Mapper → Service → Controller）
-- [x] 排班管理（coach_schedule 表 → 冲突检测 + 场地容量校验）
+- [x] 排班管理（coach_schedule 表 → 冲突检测 + 场地容量校验 + 科目二/三区分）
+- [x] 车辆状态定时同步任务（VehicleStatusSyncTask）
+- [x] 系统配置管理（ConfigController + ConfigServiceImpl）
+- [x] Excel 导出工具（ExcelExportUtil）
 - [x] 残疾信息管理（DisabilityInfo 学员提交 → 管理员审核）
 - [x] 特殊人群记录（SpecialPersonRecord 禁驾期计算 + 禁令状态查询）
 - [x] 补充数据库：`upgrade_disability_special.sql` 增量升级脚本 + 合并到 `init_script.sql`
@@ -510,15 +562,18 @@ mvn spring-boot:run
 ### 待完善
 
 **P1 — 功能待完善**
-- [ ] Config 实体类（表已存在，目前仅通过 ConfigMapper 原生 SQL 访问）
+- [ ] Config 实体类（表已存在，目前仅通过 ConfigMapper 原生 SQL 访问；已有 ConfigController + ConfigServiceImpl 部分实现，需确认完整性）
 - [ ] CoachPortalController 新增的 7 个端点（time-slots/profile/password）缺少 `@RequireRole(2)` 注解（虽已通过 resolveCoachId() 做了编程式校验，但与现有声明式模式不一致）
 
 **P2 — 业务逻辑待优化**
 - [ ] Token 刷新接口（当前 Token 过期后需重新登录）
 - [ ] 密码重置功能
 - [ ] 数据报表导出（Excel/PDF）
-- [ ] 系统中 config 表的配置项管理页面（目前直连数据库修改）
 - [ ] ProgressServiceImpl 按 examMode 区分小汽车（4 科）与特种车辆（2 科）的结业规则
+
+**P3 — 已知业务逻辑缺陷**
+- [ ] **学员预约历史不显示科目信息**：`GET /appointments/my` 返回的预约记录未关联 `coach_schedule` 表，学员无法看到已预约课程是科目二还是科目三。修复方向：(a) AppointmentMapper SQL 左连接 coach_schedule 表带出 subject 字段，或 (b) appointment 表增加冗余 subject 列
+- [ ] **缺少科目前置校验**：`POST /appointments` 创建预约时未检查学员是否已通过前置科目（如预约科目二排班但科目一未通过）。修复方向：在 AppointmentController.create() 中根据 schedule.subject 值调用 ProgressServiceImpl 判断前置科目状态，未通过则拦截
 
 ### 评估：缺失功能可实现性
 
@@ -526,16 +581,18 @@ mvn spring-boot:run
 |-------|------|
 | Token 刷新 | 未实现，需新增接口 |
 | 密码重置 | 未实现 |
-| 报表导出 | 未实现 |
+| 报表导出 | 已部分实现：ExcelExportUtil 工具类存在 |
 | 特种车辆进度适配 | ProgressServiceImpl 需根据 examMode 分支处理 |
-| Config 实体类 | 表已存在，Java 实体待创建（目前 ConfigMapper 走原生 SQL） |
+| Config 实体类 | 已有部分实现（ConfigController + ConfigServiceImpl），需确认完整性 |
 | 教练准教车型变更 | 已实现：教练提交 → 管理员审核 → 自动更新 coach.vehicle_type |
 | 支付管理 | 已实现：payment_record 表 → 欠费管理 / 收入看板 / 账单自动生成 |
 | 合场管理 | 已实现：学员申请 → 支付 → 管理员安排时间 / 完成 / 取消 |
 | 体检申请 | 已实现：学员提交 → 管理员审核 → 录入体检结果 |
 | 增驾申请 | 已实现：学员申请 → 管理员审核 → 录入考试结果（通过后自动更新车型） |
-| 排班管理 | 已实现：教练提交 → 管理员审核（冲突检测 + 场地容量校验） |
+| 排班管理 | 已实现：教练提交 → 管理员审核（冲突检测 + 场地容量校验 + 科目二/三区分） |
 | 车辆管理 | 已实现：管理员 CRUD → 教练查询可用车辆 → 排班引用 |
+| 文件请求管理 | 已实现：学员提交材料清单 → 管理员审核 |
+| 系统配置管理 | 已实现：配置项 CRUD 管理 |
 | 残疾信息管理 | 已实现：学员提交 → 管理员审核（✅ 已补齐建表 SQL） |
 | 特殊人群记录 | 已实现：学员提交 → 管理员审核 → 禁驾期计算（✅ 已补齐建表 SQL） |
 | 教练自助注册 | 已实现：公开注册 → 管理员审核 |

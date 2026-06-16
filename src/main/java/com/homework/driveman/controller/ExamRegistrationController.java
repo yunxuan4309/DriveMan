@@ -30,6 +30,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -114,6 +115,19 @@ public class ExamRegistrationController {
         }
         if (session.getRemainingQuota() <= 0) {
             throw new ServiceException(ServiceCode.ERROR_CONFLICT, "该场次名额已满");
+        }
+
+        // ①⑤ 检查是否已过报名截止时间
+        String deadlineDaysStr = configService.getConfigValue("exam_registration_deadline_days");
+        if (deadlineDaysStr != null && session.getExamDate() != null) {
+            try {
+                int deadlineDays = Integer.parseInt(deadlineDaysStr);
+                if (LocalDate.now().isAfter(session.getExamDate().minusDays(deadlineDays))) {
+                    throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                            "报名已截止（考试前 " + deadlineDays + " 天停止报名）");
+                }
+            } catch (NumberFormatException ignored) {
+            }
         }
 
         // ① 校验学员车型与场次车型是否匹配

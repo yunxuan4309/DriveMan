@@ -62,6 +62,9 @@ public class AppointmentController {
     @Autowired
     private com.homework.driveman.mapper.LicenseUpgradeMapper licenseUpgradeMapper;
 
+    @Autowired
+    private com.homework.driveman.mapper.ExamRegistrationMapper examRegistrationMapper;
+
     private CurrentUser getCurrentUser(HttpServletRequest request) {
         return (CurrentUser) request.getAttribute("currentUser");
     }
@@ -160,6 +163,20 @@ public class AppointmentController {
         if (appointment.getStartTime().isBefore(schedule.getStartTime())
                 || appointment.getEndTime().isAfter(schedule.getEndTime())) {
             throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "约课时间超出教练排班时段范围");
+        }
+
+        // 检查科目前置条件
+        if (schedule.getSubject() != null && schedule.getSubject() >= 2) {
+            Set<Integer> passedSubjects = examRegistrationMapper.findPassedSubjectsByStudent(
+                    user.getUserId(), schedule.getLicenseType());
+            if (schedule.getSubject() == 2 && !passedSubjects.contains(1)) {
+                throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                        "科目一未通过，暂不能预约科目二课程");
+            }
+            if (schedule.getSubject() == 3 && (!passedSubjects.contains(1) || !passedSubjects.contains(2))) {
+                throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                        "前置科目未通过，暂不能预约科目三课程");
+            }
         }
 
         // 名额校验
@@ -320,6 +337,18 @@ public class AppointmentController {
             }
         }
 
+        // 批量查询排班信息（科目、车型）
+        List<Integer> scheduleIds = records.stream()
+                .map(Appointment::getScheduleId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        Map<Integer, CoachSchedule> scheduleMap = new HashMap<>();
+        if (!scheduleIds.isEmpty()) {
+            for (CoachSchedule s : scheduleService.listByIds(scheduleIds)) {
+                scheduleMap.put(s.getId(), s);
+            }
+        }
+
         // 构建 enriched records
         List<Map<String, Object>> enriched = records.stream().map(a -> {
             Map<String, Object> map = new LinkedHashMap<>();
@@ -340,6 +369,15 @@ public class AppointmentController {
             map.put("studentLicenseType", student != null ? student.getLicenseType() : null);
 
             map.put("coachName", coachNameMap.getOrDefault(a.getCoachId(), null));
+
+            // 从排班信息获取科目
+            if (a.getScheduleId() != null) {
+                CoachSchedule cs = scheduleMap.get(a.getScheduleId());
+                if (cs != null) {
+                    map.put("subject", cs.getSubject());
+                    map.put("scheduleLicenseType", cs.getLicenseType());
+                }
+            }
             return map;
         }).collect(Collectors.toList());
 
