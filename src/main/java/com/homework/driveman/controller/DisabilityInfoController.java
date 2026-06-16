@@ -38,11 +38,12 @@ public class DisabilityInfoController {
 
     // ==================== 学员端接口 ====================
 
-    @RequireRole(1)
+    @RequireRole({0, 1})
     @Operation(summary = "提交残疾信息",
             description = "C5学员提交残疾信息及相关材料\n" +
                     "disabilityType: 1-右下肢残疾, 2-双下肢残疾, 3-右手残疾, 4-听力障碍, 5-左手残疾, 9-其他\n" +
-                    "certificateFileId: 残疾人证扫描件文件ID")
+                    "certificateFileId: 残疾人证扫描件文件ID\n" +
+                    "role=0 的准学员仅 C5 车型可提交")
     @PostMapping("/submit")
     public JsonResult<DisabilityInfo> submit(HttpServletRequest request,
                                              @RequestParam Integer disabilityType,
@@ -54,7 +55,7 @@ public class DisabilityInfoController {
         return JsonResult.ok(info);
     }
 
-    @RequireRole(1)
+    @RequireRole({0, 1})
     @Operation(summary = "查看我的残疾信息", description = "学员查看自己提交的残疾信息及审核状态")
     @GetMapping("/my")
     public JsonResult<DisabilityInfo> getMyInfo(HttpServletRequest request) {

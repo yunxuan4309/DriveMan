@@ -125,12 +125,14 @@ public class RegistrationController {
     }
 
     @RequireRole(3)
-    @Operation(summary = "查询所有待审核的学员")
+    @Operation(summary = "查询所有待审核的报名",
+            description = "返回 role=0 且已选 C5 等需审核车型的准学员")
     @GetMapping("/pending")
     public JsonResult<java.util.List<User>> listPending() {
         java.util.List<User> list = userService.lambdaQuery()
-                .in(User::getRole, 0, 1)
-                .eq(User::getStatus, 0)
+                .eq(User::getRole, 0)
+                .eq(User::getStatus, 1)
+                .eq(User::getLicenseType, "C5")
                 .list();
         return JsonResult.ok(list);
     }

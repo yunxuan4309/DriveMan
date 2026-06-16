@@ -80,8 +80,8 @@ public class PaymentController {
 
     // ==================== 学员端接口 ====================
 
-    @RequireRole(1)
-    @Operation(summary = "查看我的账单", description = "学员查看自己所有支付记录（待支付/已支付/已退款）")
+    @RequireRole({0, 1})
+    @Operation(summary = "查看我的账单", description = "学员查看自己所有支付记录（待支付/已支付/已退款），准学员也可查看自己的报名费账单")
     @GetMapping("/my")
     public JsonResult<List<PaymentRecord>> getMyPayments(HttpServletRequest request) {
         CurrentUser currentUser = (CurrentUser) request.getAttribute("currentUser");

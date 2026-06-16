@@ -42,6 +42,12 @@ public class DisabilityInfoServiceImpl extends ServiceImpl<DisabilityInfoMapper,
             throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "请上传残疾人证扫描件");
         }
 
+        // role=0 的准学员只能为 C5 车型提交残疾信息
+        User user = userMapper.selectById(userId);
+        if (user != null && user.getRole() == 0 && !"C5".equals(user.getLicenseType())) {
+            throw new ServiceException(ServiceCode.ERROR_FORBIDDEN, "仅 C5 准学员可提交残疾信息");
+        }
+
         // 检查是否已提交过
         DisabilityInfo existing = getByUserId(userId);
         if (existing != null) {

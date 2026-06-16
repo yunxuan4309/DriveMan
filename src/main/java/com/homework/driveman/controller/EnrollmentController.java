@@ -104,21 +104,20 @@ public class EnrollmentController {
             throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "套餐不存在");
         }
 
-        // 更新学员的报考车型
-        user.setLicenseType(licenseType);
-        userService.updateById(user);
-
         // 需要审核的车型（如C5）→ 不生成账单，进入待审核状态
         if (AUDIT_REQUIRED_TYPES.contains(licenseType)) {
-            // 防重复提交：已在审核中则直接返回
-            if (user.getStatus() == 0) {
+            // 防重复提交：已提交过 C5 申请（licenseType 已设为 C5 且 role=0）则直接返回
+            if ("C5".equals(user.getLicenseType())) {
                 Map<String, Object> result = new LinkedHashMap<>();
                 result.put("needAudit", true);
                 result.put("message", "您的报名申请正在审核中，请耐心等待");
                 result.put("licenseType", licenseType);
                 return JsonResult.ok(result);
             }
-            user.setStatus(0); // 待审核
+            // 首次提交：更新 licenseType
+            // 注意：不修改 user.status（保持 status=1 以维持正常登录）
+            // 待审核状态由 role=0 + licenseType=C5 组合隐式表达
+            user.setLicenseType(licenseType);
             userService.updateById(user);
 
             Map<String, Object> result = new LinkedHashMap<>();
@@ -127,6 +126,10 @@ public class EnrollmentController {
             result.put("licenseType", licenseType);
             return JsonResult.ok(result);
         }
+
+        // 普通车型 → 更新 licenseType + 创建待支付账单
+        user.setLicenseType(licenseType);
+        userService.updateById(user);
 
         // 普通车型 → 直接创建待支付账单
         BigDecimal amount = pkg.getAmount() != null ? pkg.getAmount() : BigDecimal.ZERO;
