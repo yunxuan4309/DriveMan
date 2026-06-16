@@ -85,6 +85,26 @@ public class CoachAssignmentController {
     @PostMapping
     public JsonResult<Void> assign(@RequestParam Integer studentId,
                                    @RequestParam Integer coachId) {
+        // 校验学员及其报考车型
+        User student = userMapper.selectById(studentId);
+        if (student == null || student.getRole() != 1) {
+            throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "学员不存在");
+        }
+        if (student.getLicenseType() == null || student.getLicenseType().isBlank()) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "该学员尚未选择报考车型，无法分配教练");
+        }
+
+        // 校验教练准教车型是否包含学员的报考车型
+        Coach coach = coachMapper.selectById(coachId);
+        if (coach == null) {
+            throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "教练不存在");
+        }
+        String vehicleType = coach.getVehicleType();
+        if (vehicleType == null || !List.of(vehicleType.split(",")).contains(student.getLicenseType())) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                    "该教练的准教车型 (" + vehicleType + ") 不包含学员的报考车型 " + student.getLicenseType());
+        }
+
         // 校验是否已绑定
         Long count = studentCoachMapper.selectCount(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<StudentCoach>()

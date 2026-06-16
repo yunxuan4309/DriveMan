@@ -3,11 +3,16 @@ package com.homework.driveman.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.config.RequireRole;
+import com.homework.driveman.entity.Coach;
 import com.homework.driveman.entity.ExamRegistration;
 import com.homework.driveman.entity.LicenseConfig;
+import com.homework.driveman.entity.StudentCoach;
 import com.homework.driveman.entity.User;
+import com.homework.driveman.mapper.CoachMapper;
 import com.homework.driveman.mapper.ExamRegistrationMapper;
 import com.homework.driveman.mapper.LicenseConfigMapper;
+import com.homework.driveman.mapper.StudentCoachMapper;
+import com.homework.driveman.mapper.UserMapper;
 import com.homework.driveman.service.IUserService;
 import com.homework.driveman.vo.StudentListVO;
 import com.homework.driveman.web.JsonResult;
@@ -36,6 +41,15 @@ public class StudentController {
 
     @Autowired
     private LicenseConfigMapper licenseConfigMapper;
+
+    @Autowired
+    private StudentCoachMapper studentCoachMapper;
+
+    @Autowired
+    private CoachMapper coachMapper;
+
+    @Autowired
+    private UserMapper userMapper;
 
     @RequireRole(3)
     @Operation(summary = "分页查询学员",
@@ -112,7 +126,35 @@ public class StudentController {
                             Collectors.mapping(LicenseConfig::getSubject, Collectors.toList())));
         }
 
-        // 6. 组装 StudentListVO
+        // 6. 批量查询当前教练绑定信息
+        Map<Integer, StudentCoach> activeBindMap = new HashMap<>();
+        Map<Integer, String> coachNameMap = new HashMap<>();
+        if (!studentIds.isEmpty()) {
+            List<StudentCoach> activeBinds = studentCoachMapper.selectList(
+                    new LambdaQueryWrapper<StudentCoach>()
+                            .in(StudentCoach::getStudentId, studentIds)
+                            .eq(StudentCoach::getStatus, 1));
+            for (StudentCoach sc : activeBinds) {
+                activeBindMap.put(sc.getStudentId(), sc);
+            }
+            // 批量查教练姓名
+            Set<Integer> boundCoachIds = activeBinds.stream()
+                    .map(StudentCoach::getCoachId).collect(Collectors.toSet());
+            if (!boundCoachIds.isEmpty()) {
+                List<Coach> coaches = coachMapper.selectBatchIds(boundCoachIds);
+                Set<Integer> coachUserIds = coaches.stream().map(Coach::getUserId).collect(Collectors.toSet());
+                if (!coachUserIds.isEmpty()) {
+                    List<User> coachUsers = userMapper.selectBatchIds(coachUserIds);
+                    Map<Integer, String> coachUserMap = coachUsers.stream()
+                            .collect(Collectors.toMap(User::getUserId, User::getRealName, (a, b) -> a));
+                    for (Coach c : coaches) {
+                        coachNameMap.put(c.getCoachId(), coachUserMap.get(c.getUserId()));
+                    }
+                }
+            }
+        }
+
+        // 7. 组装 StudentListVO
         List<StudentListVO> voList = new ArrayList<>(users.size());
         for (User u : users) {
             StudentListVO vo = new StudentListVO();
@@ -124,10 +166,18 @@ public class StudentController {
             vo.setTotalSubjects(required.size());
             vo.setPassedCount((int) required.stream().filter(passed::contains).count());
             vo.setAllPassed(!required.isEmpty() && required.stream().allMatch(passed::contains));
+
+            // 教练绑定信息
+            StudentCoach sc = activeBindMap.get(u.getUserId());
+            if (sc != null) {
+                vo.setBindId(sc.getId());
+                vo.setCoachId(sc.getCoachId());
+                vo.setCoachName(coachNameMap.get(sc.getCoachId()));
+            }
             voList.add(vo);
         }
 
-        // 7. 按结业状态筛选（如有）
+        // 8. 按结业状态筛选（如有）
         if (allPassed != null) {
             voList = voList.stream()
                     .filter(v -> Boolean.TRUE.equals(v.getAllPassed()) == allPassed)

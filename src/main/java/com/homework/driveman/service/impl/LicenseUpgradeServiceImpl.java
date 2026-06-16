@@ -172,6 +172,12 @@ public class LicenseUpgradeServiceImpl extends ServiceImpl<LicenseUpgradeMapper,
 
         String originalLicense = student.getLicenseType();
 
+        // C5 残疾人专用驾照不允许增驾
+        if ("C5".equals(originalLicense)) {
+            throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST,
+                    "C5 残疾人专用小型自动挡汽车驾照不允许申请增驾");
+        }
+
         // 检查是否已有进行中的申请（已完结的不拦截）
         Long count = lambdaQuery()
                 .eq(LicenseUpgrade::getStudentId, studentId)
