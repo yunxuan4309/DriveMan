@@ -3,8 +3,10 @@ package com.homework.driveman.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.driveman.config.RequireRole;
 import com.homework.driveman.entity.Vehicle;
+import com.homework.driveman.exception.ServiceException;
 import com.homework.driveman.service.IVehicleService;
 import com.homework.driveman.web.JsonResult;
+import com.homework.driveman.web.ServiceCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -78,9 +80,12 @@ public class VehicleController {
     }
 
     @RequireRole(3)
-    @Operation(summary = "删除车辆", description = "逻辑删除")
+    @Operation(summary = "删除车辆", description = "逻辑删除。如有活跃排班则禁止删除")
     @DeleteMapping("/{id}")
     public JsonResult<Void> delete(@PathVariable Integer id) {
+        if (vehicleService.hasActiveSchedules(id)) {
+            throw new ServiceException(ServiceCode.ERROR_CONFLICT, "该车辆有正在进行或即将开始的排班，无法删除");
+        }
         vehicleService.removeById(id);
         return JsonResult.ok();
     }

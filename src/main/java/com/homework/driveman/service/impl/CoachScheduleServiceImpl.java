@@ -147,6 +147,19 @@ public class CoachScheduleServiceImpl extends ServiceImpl<CoachScheduleMapper, C
         if (status != 1 && status != 2) {
             throw new ServiceException(ServiceCode.ERROR_BAD_REQUEST, "审核状态只能为 1(通过) 或 2(拒绝)");
         }
+
+        // 通过审核时检查车辆状态（防止提交后车辆被设为维修/报废）
+        if (status == 1) {
+            Vehicle vehicle = vehicleMapper.selectById(schedule.getVehicleId());
+            if (vehicle == null) {
+                throw new ServiceException(ServiceCode.ERROR_NOT_FOUND, "关联车辆不存在");
+            }
+            if (vehicle.getStatus() == 3 || vehicle.getStatus() == 4) {
+                throw new ServiceException(ServiceCode.ERROR_CONFLICT,
+                        "该排班关联的车辆当前状态为" + getVehicleStatusDesc(vehicle.getStatus()) + "，无法通过审核");
+            }
+        }
+
         schedule.setStatus(status);
         schedule.setAuditRemark(remark);
         schedule.setAuditTime(LocalDateTime.now());

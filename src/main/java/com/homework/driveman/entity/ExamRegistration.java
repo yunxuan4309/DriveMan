@@ -43,6 +43,9 @@ public class ExamRegistration {
     /** 是否补考: 0-首次考试, 1-补考（仅标识记录，不影响计费；二次培训费走 retake_training_record 表） */
     private Integer isRetake;
 
+    /** 证书编号（特种车辆双科通过后生成，标准车辆为 NULL） */
+    private String certNo;
+
     /** 报名时间 */
     private LocalDateTime applyTime;
 

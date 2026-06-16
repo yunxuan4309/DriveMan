@@ -18,4 +18,11 @@ public interface IVehicleService extends IService<Vehicle> {
      */
     Page<Vehicle> pageSearch(Page<Vehicle> page, String vehicleType, Integer status,
                              String plateNumber, String brand, String model, Integer seats);
+
+    /**
+     * 检查车辆是否有未结束的已通过排班
+     * @param vehicleId 车辆ID
+     * @return true=有活跃排班
+     */
+    boolean hasActiveSchedules(Integer vehicleId);
 }

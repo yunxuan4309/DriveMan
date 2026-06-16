@@ -316,6 +316,25 @@ public class ExamRegistrationController {
                         student.setLicenseObtainedDate(LocalDateTime.now());
                         userService.updateById(student);
                     }
+
+                    // 特种车辆：双科通过后自动生成证书编号
+                    if (registration.getCertNo() == null) {
+                        boolean isSpecial = configs.stream().anyMatch(
+                                c -> c.getExamMode() != null && c.getExamMode() == 2);
+                        if (isSpecial) {
+                            String prefix = session.getLicenseType();
+                            String year = String.valueOf(LocalDate.now().getYear());
+                            String sidPart = String.format("%04d",
+                                    registration.getStudentId() % 10000);
+                            Long count = examRegistrationMapper.selectCount(
+                                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ExamRegistration>()
+                                            .isNotNull(ExamRegistration::getCertNo));
+                            int seq = count.intValue() + 1;
+                            registration.setCertNo(prefix + year + sidPart
+                                    + String.format("%04d", seq));
+                            examRegistrationService.updateById(registration);
+                        }
+                    }
                 }
             }
         }
@@ -362,6 +381,7 @@ public class ExamRegistrationController {
             map.put("passStatus", reg.getPassStatus());
             map.put("retakeCount", reg.getRetakeCount());
             map.put("isRetake", reg.getIsRetake());
+            map.put("certNo", reg.getCertNo());
             map.put("applyTime", reg.getApplyTime());
             map.put("auditTime", reg.getAuditTime());
 
@@ -405,6 +425,7 @@ public class ExamRegistrationController {
             map.put("statusDesc", getStatusDesc(reg.getStatus()));
             map.put("retakeCount", reg.getRetakeCount());
             map.put("isRetake", reg.getIsRetake());
+            map.put("certNo", reg.getCertNo());
             map.put("applyTime", reg.getApplyTime());
 
             // 查询考试场次信息
